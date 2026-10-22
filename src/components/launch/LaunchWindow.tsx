@@ -186,6 +186,9 @@ function LaunchWindowContent() {
 		try {
 			if (!(await cancelRecordingStart())) return;
 			if (!(await preparePermissions())) return;
+			if (/linux/i.test(navigator.platform)) {
+				toast.info("Click anywhere on the screen you want to record.");
+			}
 			const result = await window.electronAPI.pickCaptureTarget();
 			if (result.success && result.source) syncSelectedSource(result.source);
 			if (result.message && !result.canceled) {

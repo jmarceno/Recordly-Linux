@@ -226,6 +226,20 @@ interface Window {
 		getEditorMode: () => Promise<boolean>;
 		onEditorModeChanged: (callback: (inEditor: boolean) => void) => () => void;
 		hudOverlayRendererReady: () => void;
+		hudMenuOpen: (menuId: "mic" | "webcam" | "countdown") => void;
+		hudMenuClose: () => void;
+		hudMenuGetCurrent: () => Promise<"mic" | "webcam" | "countdown" | null>;
+		onHudMenuShow: (callback: (menuId: "mic" | "webcam" | "countdown") => void) => () => void;
+		onRecordingPreferencesChanged: (
+			callback: (prefs: {
+				microphoneEnabled: boolean;
+				microphoneDeviceId?: string;
+				systemAudioEnabled: boolean;
+				webcamEnabled: boolean;
+				webcamDeviceId?: string;
+			}) => void,
+		) => () => void;
+		onCountdownDelayChanged: (callback: (delay: number) => void) => () => void;
 		hudOverlaySetWebcamPreviewVisible: (visible: boolean) => void;
 		getHudOverlayCaptureProtection: () => Promise<{ success: boolean; enabled: boolean }>;
 		getHudOverlayMousePassthroughSupported: () => Promise<{

@@ -209,6 +209,49 @@ contextBridge.exposeInMainWorld("electronAPI", {
 	hudOverlayRendererReady: () => {
 		ipcRenderer.send("hud-overlay-renderer-ready");
 	},
+	hudMenuOpen: (menuId: "mic" | "webcam" | "countdown") => {
+		ipcRenderer.send("hud-menu-open", menuId);
+	},
+	hudMenuClose: () => {
+		ipcRenderer.send("hud-menu-close");
+	},
+	hudMenuGetCurrent: () => ipcRenderer.invoke("hud-menu-get-current"),
+	onHudMenuShow: (callback: (menuId: "mic" | "webcam" | "countdown") => void) => {
+		const listener = (
+			_event: Electron.IpcRendererEvent,
+			menuId: "mic" | "webcam" | "countdown",
+		) => callback(menuId);
+		ipcRenderer.on("hud-menu-show", listener);
+		return () => ipcRenderer.removeListener("hud-menu-show", listener);
+	},
+	onRecordingPreferencesChanged: (
+		callback: (prefs: {
+			microphoneEnabled: boolean;
+			microphoneDeviceId?: string;
+			systemAudioEnabled: boolean;
+			webcamEnabled: boolean;
+			webcamDeviceId?: string;
+		}) => void,
+	) => {
+		const listener = (
+			_event: Electron.IpcRendererEvent,
+			prefs: {
+				microphoneEnabled: boolean;
+				microphoneDeviceId?: string;
+				systemAudioEnabled: boolean;
+				webcamEnabled: boolean;
+				webcamDeviceId?: string;
+			},
+		) => callback(prefs);
+		ipcRenderer.on("recording-preferences-changed", listener);
+		return () => ipcRenderer.removeListener("recording-preferences-changed", listener);
+	},
+	onCountdownDelayChanged: (callback: (delay: number) => void) => {
+		const listener = (_event: Electron.IpcRendererEvent, delay: number) => callback(delay);
+		ipcRenderer.on("countdown-delay-changed", listener);
+		return () => ipcRenderer.removeListener("countdown-delay-changed", listener);
+	},
+
 	hudOverlaySetWebcamPreviewVisible: (visible: boolean) => {
 		ipcRenderer.send("hud-overlay-set-webcam-preview-visible", visible);
 	},

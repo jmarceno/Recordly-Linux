@@ -1,4 +1,5 @@
-import { validateCaptureSource } from "../captureSelection";
+import { createCosmicScreenSource, validateCaptureSource } from "../captureSelection";
+import { waitForCosmicOutputClick } from "../recording/cosmic";
 import { listCapturePickerWindows } from "../capturePickerSources";
 import { ipcMain } from "electron";
 import type { SourceListPickResult } from "../../sourceListPicker";
@@ -66,20 +67,14 @@ export function registerCapturePickerHandlers({
 	const pickTarget = async () => {
 		if (isCursorCaptureActive) return { success: false, canceled: true };
 		if (process.platform === "linux" && isLikelyLinuxWaylandSession(process.env)) {
-			// Preserve the existing portal recording path: its system picker opens
-			// when recording starts; overlay selection cannot identify Wayland windows.
-			const source = {
-				id: "screen:linux-portal",
-				name: "System picker",
-				sourceType: "screen" as const,
-			};
+			// The portal screencast is unreliable on COSMIC, so record an output
+			// directly: the user clicks anywhere on the screen they want.
+			const output = await waitForCosmicOutputClick();
+			if (!output || isCursorCaptureActive) return { success: false, canceled: true };
+			const source = createCosmicScreenSource(output);
 			setSelectedSource(source);
 			broadcastSelectedSourceChange();
-			return {
-				success: true,
-				source,
-				message: "Choose a screen or window in the system picker when you start recording.",
-			};
+			return { success: true, source };
 		}
 
 		if (process.platform === "linux") return pickSourceList();

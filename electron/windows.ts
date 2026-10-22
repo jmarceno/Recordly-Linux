@@ -1,22 +1,22 @@
-import { resolveEditorStartupView } from "./editorStartupView";
-import { currentProjectPath, currentVideoPath, currentRecordingSession } from "./ipc/state";
-import { isHudInEditorMode } from "./hudEditorMode";
 import fs from "node:fs";
 import { createRequire } from "node:module";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { app, BrowserWindow, ipcMain, type WebContents } from "electron";
 import {
-	supportsHudCaptureProtection,
 	shouldProtectHudCapture,
+	supportsHudCaptureProtection,
 } from "../src/lib/hudCaptureProtection";
 import { USER_DATA_PATH } from "./appPaths";
+import { resolveEditorStartupView } from "./editorStartupView";
+import { isHudInEditorMode } from "./hudEditorMode";
 import {
 	getHudOverlayWindowBounds,
 	resizeHudOverlayFallbackBounds,
 	shouldExpandHudOverlayFallback,
 } from "./hudOverlayBounds";
 import { getHudOverlayTaskbarOptions } from "./hudOverlayWindowOptions";
+import { currentProjectPath, currentRecordingSession, currentVideoPath } from "./ipc/state";
 import { getPackagedRendererBaseUrl } from "./rendererServer";
 
 const electronWindowsDir = path.dirname(fileURLToPath(import.meta.url));
@@ -48,6 +48,10 @@ let capturePickerWindows: BrowserWindow[] = [];
 let areaRecordingBorderWindow: BrowserWindow | null = null;
 let updateToastWindow: BrowserWindow | null = null;
 let hudWasVisibleBeforeUpdateToast = false;
+let hudMenuWindow: BrowserWindow | null = null;
+let hudMenuPendingId: string | null = null;
+let hudMenuCurrentId: string | null = null;
+let hudMenuReady = false;
 
 const HUD_OVERLAY_SETTINGS_FILE = path.join(USER_DATA_PATH, "hud-overlay-settings.json");
 const HUD_EDGE_MARGIN_DIP = 16;
@@ -678,6 +682,7 @@ export function createHudOverlayWindow(): BrowserWindow {
 	screen.on("display-metrics-changed", handleDisplayMetricsChanged);
 
 	win.on("closed", () => {
+		hideHudMenu();
 		ipcMain.removeListener("hud-overlay-renderer-ready", handleHudRendererReady);
 		screen.removeListener("display-removed", handleDisplayRemoved);
 		screen.removeListener("display-metrics-changed", handleDisplayMetricsChanged);
@@ -699,6 +704,127 @@ export function createHudOverlayWindow(): BrowserWindow {
 
 	return win;
 }
+
+function getHudMenuDisplayBounds() {
+	const hud = getHudOverlayWindow();
+	const display = hud
+		? getScreen().getDisplayMatching(hud.getBounds())
+		: getScreen().getPrimaryDisplay();
+	return display.bounds;
+}
+
+export function createHudMenuWindow(): BrowserWindow {
+	const bounds = getHudMenuDisplayBounds();
+	const win = new BrowserWindow({
+		x: bounds.x,
+		y: bounds.y,
+		width: bounds.width,
+		height: bounds.height,
+		frame: false,
+		transparent: true,
+		backgroundColor: "#00000000",
+		resizable: false,
+		movable: false,
+		minimizable: false,
+		maximizable: false,
+		fullscreenable: false,
+		alwaysOnTop: true,
+		skipTaskbar: true,
+		hasShadow: false,
+		show: false,
+		// A non-focusable overlay avoids the compositor's active-window border and
+		// keeps the HUD bar's focus state untouched. Pointer events still arrive.
+		focusable: false,
+		webPreferences: {
+			preload: path.join(electronWindowsDir, "preload.mjs"),
+			nodeIntegration: false,
+			contextIsolation: true,
+			webSecurity: false,
+			backgroundThrottling: false,
+		},
+	});
+
+	win.setAlwaysOnTop(true, "screen-saver");
+	hudMenuReady = false;
+	hudMenuWindow = win;
+
+	win.webContents.on("did-finish-load", () => {
+		if (win.isDestroyed()) {
+			return;
+		}
+		hudMenuReady = true;
+		const pendingId = hudMenuPendingId;
+		if (pendingId) {
+			hudMenuPendingId = null;
+			win.webContents.send("hud-menu-show", pendingId);
+			if (!win.isVisible()) {
+				win.show();
+			}
+			win.moveTop();
+		}
+	});
+
+	win.on("closed", () => {
+		if (hudMenuWindow === win) {
+			hudMenuWindow = null;
+			hudMenuReady = false;
+			hudMenuPendingId = null;
+		}
+	});
+
+	if (VITE_DEV_SERVER_URL) {
+		win.loadURL(VITE_DEV_SERVER_URL + "?windowType=hud-menu");
+	} else {
+		win.loadFile(path.join(RENDERER_DIST, "index.html"), {
+			query: { windowType: "hud-menu" },
+		});
+	}
+
+	return win;
+}
+
+export function showHudMenu(menuId: string): void {
+	if (menuId !== "mic" && menuId !== "webcam" && menuId !== "countdown") {
+		return;
+	}
+
+	const win =
+		hudMenuWindow && !hudMenuWindow.isDestroyed() ? hudMenuWindow : createHudMenuWindow();
+	hudMenuCurrentId = menuId;
+	hudMenuPendingId = menuId;
+
+	if (hudMenuReady && !win.isDestroyed()) {
+		hudMenuPendingId = null;
+		win.webContents.send("hud-menu-show", menuId);
+		win.show();
+		win.moveTop();
+	}
+	// Otherwise the did-finish-load handler shows the window and forwards the id.
+}
+
+export function hideHudMenu(): void {
+	hudMenuPendingId = null;
+	hudMenuCurrentId = null;
+	if (hudMenuWindow && !hudMenuWindow.isDestroyed()) {
+		hudMenuWindow.hide();
+	}
+}
+
+export function getHudMenuWindow(): BrowserWindow | null {
+	return hudMenuWindow && !hudMenuWindow.isDestroyed() ? hudMenuWindow : null;
+}
+
+ipcMain.on("hud-menu-open", (_event, menuId: unknown) => {
+	if (typeof menuId === "string") {
+		showHudMenu(menuId);
+	}
+});
+
+ipcMain.on("hud-menu-close", () => {
+	hideHudMenu();
+});
+
+ipcMain.handle("hud-menu-get-current", () => hudMenuCurrentId);
 
 export function getHudOverlayWindow(): BrowserWindow | null {
 	return hudOverlayWindow && !hudOverlayWindow.isDestroyed() ? hudOverlayWindow : null;

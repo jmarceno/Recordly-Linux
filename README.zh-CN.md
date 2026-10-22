@@ -11,7 +11,7 @@
 
 ### 无需额外剪辑，也能做出精致的屏幕录制。
 [Recordly](https://www.recordly.dev) 是一款**开源屏幕录制器**和编辑器，适合制作**操作讲解、演示、产品视频**等内容。  
-**欢迎提交 PR。** [赞助](https://ko-fi.com/webadderall/goal?g=0)
+**欢迎提交 PR。**
 
 https://github.com/user-attachments/assets/9b66c71d-ac97-49ff-a0c9-63ac26edf2e4
 
@@ -168,7 +168,7 @@ Recordly 拥有一个社区驱动的扩展系统。任何人都可以构建和�
 
 预构建发布版本请见：
 
-https://github.com/webadderallorg/Recordly/releases
+https://github.com/jmarceno/Recordly-Linux/releases
 
 ---
 
@@ -201,7 +201,7 @@ sudo apt install build-essential cmake libx11-dev libxtst-dev libxrandr-dev libx
 ### 步骤
 
 ```bash
-git clone https://github.com/webadderallorg/Recordly.git recordly
+git clone https://github.com/jmarceno/Recordly-Linux.git recordly
 cd recordly
 npm install
 npm run dev
@@ -358,27 +358,11 @@ Recordly 将平台相关的捕获层与基于渲染器的编辑、导出流程�
 
 问题反馈和功能建议：
 
-https://github.com/webadderallorg/Recordly/issues
+https://github.com/jmarceno/Recordly-Linux/issues
 
 欢迎提交 Pull Request。
 
 ---
-
-# 支持者名单
-
-[![Ko-Fi](https://img.shields.io/badge/Ko--fi-F16061?style=for-the-badge&logo=ko-fi&logoColor=white)](https://ko-fi.com/webadderall)
-
-- Tadees
-- buildwithfur
-- Tobias
-- Anonymous Supporter
-- Tandava Appadoo
-- Digitalfastmind
-- Roberto Marcelino
-- Rajan RK
-- Francesco
-- Erwan
-- Anonymous supporter
 
 ---
 

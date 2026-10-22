@@ -21,7 +21,7 @@ import { formatBinding, SHORTCUT_ACTIONS, SHORTCUT_LABELS } from "@/lib/shortcut
 import { formatShortcut } from "@/utils/platformUtils";
 import { toast } from "@/components/ui/toast";
 
-export const RECORDLY_ISSUES_URL = "https://github.com/webadderallorg/Recordly/issues";
+export const RECORDLY_ISSUES_URL = "https://github.com/jmarceno/Recordly-Linux/issues";
 const RECORDLY_DISCORD_URL = "https://discord.gg/sdv2FBVNgE";
 export const APP_HEADER_ACTION_BUTTON_CLASS =
 	"h-7 px-2 text-xs text-muted-foreground hover:bg-foreground/10 hover:text-foreground transition-all gap-1.5";

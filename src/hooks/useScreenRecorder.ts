@@ -1,9 +1,8 @@
-import { acquireBrowserScreenCapture, isCapturePermissionDismissed } from "./browserScreenCapture";
 import { fixWebmDuration } from "@fix-webm-duration/fix";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "@/components/ui/toast";
 import { getEffectiveRecordingDurationMs } from "@/lib/mediaTiming";
-import { hasRecordlySession } from "@/lib/auth/recordlyAuth";
+import { acquireBrowserScreenCapture, isCapturePermissionDismissed } from "./browserScreenCapture";
 import {
 	getVideoExtensionForMimeType,
 	isWebmMimeType,
@@ -548,10 +547,6 @@ export function useScreenRecorder(): UseScreenRecorderReturn {
 	}, []);
 
 	const preparePermissions = useCallback(async () => {
-		if (!(await hasRecordlySession().catch(() => false))) {
-			await window.electronAPI.showRecordingPermissions();
-			return false;
-		}
 		if ((await window.electronAPI.getPlatform()) !== "darwin") return true;
 		const [screen, accessibility] = await Promise.all([
 			window.electronAPI.getScreenRecordingPermissionStatus(),
@@ -1124,11 +1119,13 @@ export function useScreenRecorder(): UseScreenRecorderReturn {
 		resetRecordingClock(recordingSessionTimestamp.current);
 		await prepareWebcamRecorder();
 
+		// COSMIC outputs ("screen:cosmic:") record natively too, bypassing the portal.
 		const useNativeMacScreenCapture =
-			platform === "darwin" &&
-			(selectedSource.id?.startsWith("screen:") ||
-				selectedSource.id?.startsWith("window:") ||
-				selectedSource.id?.startsWith("area:")) &&
+			((platform === "darwin" &&
+				(selectedSource.id?.startsWith("screen:") ||
+					selectedSource.id?.startsWith("window:") ||
+					selectedSource.id?.startsWith("area:"))) ||
+				(platform === "linux" && selectedSource.id?.startsWith("screen:cosmic:"))) &&
 			typeof window.electronAPI.startNativeScreenRecording === "function";
 
 		let useNativeWindowsCapture = false;
@@ -1536,6 +1533,28 @@ export function useScreenRecorder(): UseScreenRecorderReturn {
 	const persistWebcamDeviceId = useCallback((deviceId: string | undefined) => {
 		setWebcamDeviceId(deviceId);
 		void window.electronAPI.setRecordingPreferences({ webcamDeviceId: deviceId });
+	}, []);
+
+	useEffect(() => {
+		const removePreferencesListener = window.electronAPI?.onRecordingPreferencesChanged?.(
+			(prefs) => {
+				setMicrophoneEnabled(prefs.microphoneEnabled);
+				setMicrophoneDeviceId(prefs.microphoneDeviceId);
+				setSystemAudioEnabled(prefs.systemAudioEnabled);
+				setWebcamEnabled(prefs.webcamEnabled);
+				setWebcamDeviceId(prefs.webcamDeviceId);
+			},
+		);
+		const removeCountdownListener = window.electronAPI?.onCountdownDelayChanged?.((delay) => {
+			if (typeof delay === "number") {
+				setCountdownDelayState(delay);
+			}
+		});
+
+		return () => {
+			removePreferencesListener?.();
+			removeCountdownListener?.();
+		};
 	}, []);
 
 	useEffect(() => {

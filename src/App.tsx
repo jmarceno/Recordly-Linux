@@ -1,11 +1,16 @@
 import { Card } from "@heroui/react";
 import { lazy, Suspense, useEffect, useState } from "react";
-import { useI18n } from "./contexts/I18nContext";
-import { getStartupView } from "./lib/startupView";
 import { HomeLoadingSkeleton } from "./components/video-editor/dashboard/HomeLoadingSkeleton";
 import { EditorLoadingSkeleton } from "./components/video-editor/layout/EditorLoadingSkeleton";
+import { useI18n } from "./contexts/I18nContext";
+import { getStartupView } from "./lib/startupView";
 
 const HudWindow = lazy(() => import("./components/launch/HudWindow"));
+const HudMenuWindow = lazy(() =>
+	import("./components/launch/HudMenuWindow").then((module) => ({
+		default: module.HudMenuWindow,
+	})),
+);
 const SourceSelector = lazy(() =>
 	import("./components/launch/SourceSelector").then((module) => ({
 		default: module.SourceSelector,
@@ -36,6 +41,7 @@ export default function App() {
 
 		if (
 			windowType === "hud-overlay" ||
+			windowType === "hud-menu" ||
 			windowType === "source-selector" ||
 			windowType === "countdown" ||
 			windowType === "update-toast" ||
@@ -69,6 +75,9 @@ export default function App() {
 	switch (windowType) {
 		case "hud-overlay":
 			content = <HudWindow />;
+			break;
+		case "hud-menu":
+			content = <HudMenuWindow />;
 			break;
 		case "source-selector":
 			content = <SourceSelector />;

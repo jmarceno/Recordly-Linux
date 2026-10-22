@@ -9,6 +9,7 @@ import { selectedSource } from "./state";
 import type { SelectedSource } from "./types";
 import { getScreen } from "./utils";
 import { getDesktopSources } from "./register/sources";
+import { COSMIC_SOURCE_PREFIX, type CosmicOutput, listCosmicOutputs } from "./recording/cosmic";
 import {
 	isLikelyLinuxWaylandSession,
 	LINUX_PORTAL_SCREEN_SOURCE_ID,
@@ -23,7 +24,14 @@ export async function validateCaptureSource(candidate: unknown): Promise<Selecte
 		return process.platform === "linux" && isLikelyLinuxWaylandSession(process.env)
 			? { id: source.id, name: "System picker", sourceType: "screen" }
 			: null;
-	if (process.platform === "linux" && isLikelyLinuxWaylandSession(process.env)) return null;
+	if (process.platform === "linux" && isLikelyLinuxWaylandSession(process.env)) {
+		if (!source.id.startsWith(COSMIC_SOURCE_PREFIX)) return null;
+		const outputName = source.id.slice(COSMIC_SOURCE_PREFIX.length);
+		const output = (await listCosmicOutputs().catch(() => [])).find(
+			(entry) => entry.name === outputName,
+		);
+		return output ? createCosmicScreenSource(output) : null;
+	}
 	if (source.id.startsWith("window:") && process.platform === "linux") {
 		const windows = await getDesktopSources(
 			{ types: ["window"], thumbnailSize: { width: 0, height: 0 } },
@@ -90,6 +98,19 @@ export async function validateCaptureSource(candidate: unknown): Promise<Selecte
 	return match
 		? { id: match.id, name: match.name, display_id: match.display_id, sourceType: "screen" }
 		: null;
+}
+
+/** A COSMIC output as a selected source, tied to the Electron display at the same spot. */
+export function createCosmicScreenSource(output: CosmicOutput): SelectedSource {
+	const display = getScreen()
+		.getAllDisplays()
+		.find((entry) => entry.bounds.x === output.x && entry.bounds.y === output.y);
+	return {
+		id: `${COSMIC_SOURCE_PREFIX}${output.name}`,
+		name: `Screen ${output.name} (${output.width}×${output.height})`,
+		display_id: display ? String(display.id) : undefined,
+		sourceType: "screen",
+	};
 }
 
 /** A new main process starts unselected; old saved preferences are never restored. */

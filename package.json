@@ -3,13 +3,13 @@
 	"productName": "Recordly",
 	"description": "A free, creator-focused screen recorder with auto-zoom, cursor effects, backgrounds, annotations, and more - built for polished videos out of the box.",
 	"author": "webadderall",
-	"homepage": "https://github.com/webadderallorg/Recordly",
+	"homepage": "https://github.com/jmarceno/Recordly-Linux",
 	"repository": {
 		"type": "git",
-		"url": "https://github.com/webadderallorg/Recordly.git"
+		"url": "https://github.com/jmarceno/Recordly-Linux.git"
 	},
 	"bugs": {
-		"url": "https://github.com/webadderallorg/Recordly/issues"
+		"url": "https://github.com/jmarceno/Recordly-Linux/issues"
 	},
 	"private": true,
 	"version": "1.4.0",
@@ -74,7 +74,7 @@
 		"@vitejs/plugin-react": "^4.2.1",
 		"clsx": "^2.1.1",
 		"dnd-timeline": "^2.2.0",
-		"electron": "^43.1.0",
+		"electron": "^43.8.3",
 		"electron-builder": "^26.7.0",
 		"emoji-picker-react": "^4.16.1",
 		"fast-check": "^4.5.2",

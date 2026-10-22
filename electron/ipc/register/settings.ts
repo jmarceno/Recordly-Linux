@@ -1,7 +1,7 @@
-import { createCountdownController } from "../../countdownController";
 import fs from "node:fs/promises";
 import { app, BrowserWindow, ipcMain } from "electron";
 import { hasAppSetting, readAppSettingsStore, writeAppSettingsStore } from "../../appSettingsStore";
+import { createCountdownController } from "../../countdownController";
 import { hideCursor } from "../../cursorHider";
 import { createCountdownWindow } from "../../windows";
 import { COUNTDOWN_SETTINGS_FILE, RECORDINGS_SETTINGS_FILE, SHORTCUTS_FILE } from "../constants";
@@ -16,6 +16,27 @@ import {
 	setCountdownRemaining,
 } from "../state";
 import { parseJsonWithByteOrderMark } from "../utils";
+
+function buildRecordingPreferencesPayload(parsed: Record<string, unknown>) {
+	return {
+		microphoneEnabled: parsed.microphoneEnabled === true,
+		microphoneDeviceId:
+			typeof parsed.microphoneDeviceId === "string" ? parsed.microphoneDeviceId : undefined,
+		systemAudioEnabled: parsed.systemAudioEnabled === true,
+		webcamEnabled: parsed.webcamEnabled === true,
+		webcamDeviceId:
+			typeof parsed.webcamDeviceId === "string" ? parsed.webcamDeviceId : undefined,
+	};
+}
+
+function broadcastRecordingPreferences(parsed: Record<string, unknown>) {
+	const payload = buildRecordingPreferencesPayload(parsed);
+	for (const win of BrowserWindow.getAllWindows()) {
+		if (!win.isDestroyed()) {
+			win.webContents.send("recording-preferences-changed", payload);
+		}
+	}
+}
 
 const BROWSER_MICROPHONE_PROFILE_ENV = "RECORDLY_BROWSER_MIC_PROFILE";
 const DEFAULT_BROWSER_MICROPHONE_PROFILE = "no-agc";
@@ -137,15 +158,7 @@ export function registerSettingsHandlers() {
 			const parsed = await recordingPreferencesStore.read();
 			return {
 				success: true,
-				microphoneEnabled: parsed.microphoneEnabled === true,
-				microphoneDeviceId:
-					typeof parsed.microphoneDeviceId === "string"
-						? parsed.microphoneDeviceId
-						: undefined,
-				systemAudioEnabled: parsed.systemAudioEnabled === true,
-				webcamEnabled: parsed.webcamEnabled === true,
-				webcamDeviceId:
-					typeof parsed.webcamDeviceId === "string" ? parsed.webcamDeviceId : undefined,
+				...buildRecordingPreferencesPayload(parsed),
 			};
 		} catch {
 			return {
@@ -166,6 +179,7 @@ export function registerSettingsHandlers() {
 	ipcMain.handle("set-recording-preferences", async (_, prefs: RecordingPreferencesPatch) => {
 		try {
 			await recordingPreferencesStore.update(prefs);
+			broadcastRecordingPreferences(await recordingPreferencesStore.read());
 			return { success: true };
 		} catch (error) {
 			console.error("Failed to save recording preferences:", error);
@@ -190,6 +204,11 @@ export function registerSettingsHandlers() {
 				JSON.stringify({ delay }, null, 2),
 				"utf-8",
 			);
+			for (const win of BrowserWindow.getAllWindows()) {
+				if (!win.isDestroyed()) {
+					win.webContents.send("countdown-delay-changed", delay);
+				}
+			}
 			return { success: true };
 		} catch (error) {
 			console.error("Failed to save countdown delay:", error);

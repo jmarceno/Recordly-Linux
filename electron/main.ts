@@ -1,6 +1,3 @@
-import { resolveDisplayMediaSource } from "./ipc/register/sourceMapping";
-import { createSaveBeforeCloseController } from "./saveBeforeClose";
-import { clearRecordingTrashUndo } from "./ipc/recording/library";
 import fs from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
@@ -29,10 +26,13 @@ import {
 	killWindowsCaptureProcess,
 	registerIpcHandlers,
 } from "./ipc/handlers";
+import { clearRecordingTrashUndo } from "./ipc/recording/library";
+import { resolveDisplayMediaSource } from "./ipc/register/sourceMapping";
 import { ensureMediaServer } from "./mediaServer";
 import { hardenWebContentsNavigation, shouldHardenWebContentsType } from "./navigationPolicy";
 import { shouldGrantDisplayCapture, shouldGrantMediaPermission } from "./permissionPolicy";
 import { ensurePackagedRendererServer, getPackagedRendererBaseUrl } from "./rendererServer";
+import { createSaveBeforeCloseController } from "./saveBeforeClose";
 import {
 	checkForAppUpdates,
 	deferUpdateReminder,
@@ -50,14 +50,15 @@ import {
 	skipAvailableUpdateVersion,
 } from "./updater";
 import {
+	beginHudCaptureProtection,
 	createEditorWindow,
 	createHudOverlayWindow,
 	createSourceSelectorWindow,
+	getHudMenuWindow,
 	getHudOverlayWindow,
 	getUpdateToastWindow,
 	hideUpdateToastWindow,
 	isHudOverlayMousePassthroughSupported,
-	beginHudCaptureProtection,
 	reassertHudOverlayMousePassthrough as reassertHudOverlayMouseState,
 	setHudOverlayRecordingActive,
 	showUpdateToastWindow,
@@ -170,7 +171,11 @@ function isHudWebContents(webContents: Electron.WebContents | null): boolean {
 	}
 
 	const hudWindow = getHudOverlayWindow();
-	return Boolean(hudWindow && hudWindow.webContents === webContents);
+	const hudMenu = getHudMenuWindow();
+	return Boolean(
+		(hudWindow && hudWindow.webContents === webContents) ||
+			(hudMenu && hudMenu.webContents === webContents),
+	);
 }
 
 // Window references
@@ -1063,7 +1068,8 @@ app.whenReady().then(async () => {
 	}
 
 	createWindow();
-	setupAutoUpdates(getUpdateDialogWindow, sendUpdateToastToWindows);
+	// Fork: no auto-updates; upstream releases would replace this build.
+	void setupAutoUpdates;
 	if (IS_DEV && process.env.RECORDLY_DEV_PREVIEW_UPDATE === "1") {
 		setTimeout(() => {
 			if (process.platform === "darwin") {
@@ -1126,7 +1132,12 @@ app.whenReady().then(async () => {
 						thumbnailSize: { width: 0, height: 0 },
 					}),
 			});
-			callback(video ? { video } : {});
+			// Chromium on Linux maps loopback to the default sink's PulseAudio monitor.
+			const audio =
+				video && request.audioRequested && process.platform === "linux"
+					? ("loopback" as const)
+					: undefined;
+			callback(video ? { video, ...(audio ? { audio } : {}) } : {});
 		} catch (error) {
 			console.error("setDisplayMediaRequestHandler error:", error);
 			callback({});

@@ -1,14 +1,14 @@
 import { ToggleButton } from "@heroui/react";
+import { cloneElement, isValidElement, type ReactElement, type ReactNode } from "react";
+import { AudioLevelMeter } from "@/components/ui/audio-level-meter";
 import { Button } from "@/components/ui/button";
 import { MicrophoneIcon, MicrophoneSlashIcon } from "@/components/ui/icons";
-import { cloneElement, isValidElement, type ReactElement, type ReactNode } from "react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useAudioLevelMeter } from "@/hooks/useAudioLevelMeter";
-import { AudioLevelMeter } from "@/components/ui/audio-level-meter";
 import styles from "../LaunchWindow.module.css";
 import "../launchTheme.css";
-import type { DeviceOption } from "./launchPopoverTypes";
 import { useHudInteraction } from "../contexts/HudInteractionContext";
+import type { DeviceOption } from "./launchPopoverTypes";
 
 export function DropdownItem({
 	onClick,
@@ -86,20 +86,39 @@ export function MicDeviceRow({
 	);
 }
 
+function isLinuxHudMenuPanelMode(): boolean {
+	return (
+		typeof navigator !== "undefined" &&
+		(/linux/i.test(navigator.platform) || /linux/i.test(navigator.userAgent))
+	);
+}
+
 export function HudPopover({
 	open,
 	onOpenChange,
 	trigger,
 	children,
 	align = "center",
+	menuId,
 }: {
 	open: boolean;
 	onOpenChange: (open: boolean) => void;
 	trigger: ReactElement;
 	children: ReactNode;
 	align?: "start" | "center" | "end";
+	menuId?: "mic" | "webcam" | "countdown";
 }) {
 	const { onMouseEnter } = useHudInteraction();
+
+	// Native Wayland cannot position or resize the HUD to make room for these
+	// menus, so Linux opens them in a dedicated full-screen menu window instead.
+	if (menuId && isLinuxHudMenuPanelMode()) {
+		// React Aria buttons consume the DOM click, so hook their press event.
+		return cloneElement(trigger as ReactElement<{ onPress?: () => void }>, {
+			onPress: () => window.electronAPI?.hudMenuOpen?.(menuId),
+		});
+	}
+
 	return (
 		<Popover open={open} onOpenChange={onOpenChange} modal={true}>
 			<PopoverTrigger asChild>{trigger}</PopoverTrigger>

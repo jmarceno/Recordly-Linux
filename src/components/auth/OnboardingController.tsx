@@ -35,10 +35,8 @@ export function OnboardingController({
 
 	useEffect(() => {
 		if (!ready) return;
-		if (!user) {
-			setOpen(true);
-			return;
-		}
+		// Fork: no cloud account; never gate the app behind sign-in.
+		if (!user) return;
 		if (checked.current) return;
 		checked.current = true;
 		if (loadAppSetting<boolean>("recordly.onboarding.permissionsRequested")) {
@@ -62,6 +60,8 @@ export function OnboardingController({
 		close();
 		void window.electronAPI.showRecordingHud();
 	};
+
+	if (!user) return null;
 
 	return (
 		<RecordlySignInDialog

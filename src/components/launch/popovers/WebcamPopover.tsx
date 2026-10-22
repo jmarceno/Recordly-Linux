@@ -1,3 +1,4 @@
+import type { ReactElement } from "react";
 import {
 	Eye,
 	EyeSlash as EyeOff,
@@ -5,10 +6,9 @@ import {
 	VideoCameraSlash as VideoOff,
 } from "@/components/ui/icons";
 import { useScopedT } from "@/contexts/I18nContext";
-import { DropdownItem, HudPopover } from "./PopoverScaffold";
 import { useLaunchPopoverCoordinator } from "./LaunchPopoverCoordinator";
 import type { DeviceOption } from "./launchPopoverTypes";
-import type { ReactElement } from "react";
+import { DropdownItem, HudPopover } from "./PopoverScaffold";
 
 const POPOVER_ID = "webcam";
 
@@ -59,6 +59,7 @@ export function WebcamPopover({
 				requestOpen(POPOVER_ID);
 			}}
 			trigger={trigger}
+			menuId="webcam"
 			align="center"
 		>
 			<div className="px-3 pb-1 pt-2 text-[10px] font-semibold uppercase tracking-[0.08em] text-[var(--launch-label)]">

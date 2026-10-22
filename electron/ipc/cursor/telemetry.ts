@@ -165,10 +165,21 @@ export function getCursorCaptureElapsedMs(nowMs = Date.now()) {
 	);
 }
 
+let waylandCursorMonitorActive = false;
+let waylandCaptureDisplayId: number | null = null;
+
+export function setWaylandCursorMonitorActive(active: boolean) {
+	waylandCursorMonitorActive = active;
+	waylandCaptureDisplayId = null;
+}
+
 export function getNormalizedCursorPoint() {
 	const fallbackCursor = getScreen().getCursorScreenPoint();
 	const linuxCursorCache = process.platform === "linux" ? linuxCursorScreenPoint : null;
-	const isLinuxCacheFresh = !!linuxCursorCache && Date.now() - linuxCursorCache.updatedAt <= 1000;
+	// The Wayland helper only reports motion, so its last point stays valid.
+	const isLinuxCacheFresh =
+		!!linuxCursorCache &&
+		(waylandCursorMonitorActive || Date.now() - linuxCursorCache.updatedAt <= 1000);
 
 	const primarySf =
 		process.platform !== "darwin" ? getScreen().getPrimaryDisplay().scaleFactor || 1 : 1;
@@ -204,7 +215,20 @@ export function getNormalizedCursorPoint() {
 				.getAllDisplays()
 				.find((display) => display.id === sourceDisplayId) ?? null)
 		: null;
-	const display = sourceDisplay ?? getScreen().getDisplayNearestPoint(cursor);
+	let display = sourceDisplay;
+	if (!display && waylandCursorMonitorActive && isLinuxCacheFresh) {
+		// The portal hides which screen was picked; assume the one the cursor
+		// was on when recording started and keep normalizing against it.
+		display =
+			getScreen()
+				.getAllDisplays()
+				.find((entry) => entry.id === waylandCaptureDisplayId) ?? null;
+		if (!display) {
+			display = getScreen().getDisplayNearestPoint(cursor);
+			waylandCaptureDisplayId = display.id;
+		}
+	}
+	display ??= getScreen().getDisplayNearestPoint(cursor);
 	const bounds = display.bounds;
 	const width = Math.max(1, bounds.width);
 	const height = Math.max(1, bounds.height);
@@ -261,6 +285,14 @@ export function pushCursorSample(
 	}
 }
 
+/** Replaces samples taken before the Wayland helper reported a position. */
+export function backfillCursorSamples(cx: number, cy: number) {
+	for (const sample of activeCursorSamples) {
+		sample.cx = cx;
+		sample.cy = cy;
+	}
+}
+
 export function sampleCursorPoint() {
 	const point = getNormalizedCursorPoint();
 	pushCursorSample(point.cx, point.cy, getCursorCaptureElapsedMs(), "move");
@@ -286,6 +318,12 @@ export function snapshotCursorTelemetryForPersistence() {
 	if (activeCursorSamples.length === 0) {
 		return;
 	}
+
+	const distinct = new Set(activeCursorSamples.map((s) => `${s.cx},${s.cy}`)).size;
+	const clicks = activeCursorSamples.filter((s) => s.interactionType?.includes("click")).length;
+	console.log(
+		`[CursorTelemetry] ${activeCursorSamples.length} samples, ${distinct} positions, ${clicks} clicks`,
+	);
 
 	if (pendingCursorSamples.length === 0) {
 		setPendingCursorSamples([...activeCursorSamples]);

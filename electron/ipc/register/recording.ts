@@ -157,6 +157,14 @@ import {
 	parseWindowId,
 } from "../utils";
 import { resolveWindowsCaptureTarget } from "../windowsCaptureSelection";
+import {
+	isCosmicRecordingActive,
+	isCosmicSource,
+	pauseCosmicRecording,
+	resumeCosmicRecording,
+	startCosmicRecording,
+	stopCosmicRecording,
+} from "../recording/cosmic";
 import { getSourceArea } from "../sourceArea";
 import { bringSelectedWindowForward } from "./sources";
 
@@ -409,6 +417,9 @@ export function registerRecordingHandlers(
 		async (_, source: SelectedSource, options?: NativeMacRecordingOptions) => {
 			// Protect the HUD at the capture boundary, before the renderer publishes recording state.
 			beginHudCaptureProtection();
+			if (process.platform === "linux" && isCosmicSource(source)) {
+				return startCosmicRecording(source, options);
+			}
 			const visibleWindowBounds = source.id?.startsWith("window:")
 				? await bringSelectedWindowForward(source)
 				: null;
@@ -958,6 +969,9 @@ export function registerRecordingHandlers(
 	ipcMain.handle("stop-native-screen-recording", async () => {
 		const start = Date.now();
 		console.log("[PERF:MAIN] Handler: stop-native-screen-recording: STARTED");
+		if (process.platform === "linux" && isCosmicRecordingActive()) {
+			return stopCosmicRecording();
+		}
 		try {
 			// Windows native capture stop path
 			if (process.platform === "win32" && windowsNativeCaptureActive) {
@@ -1324,6 +1338,9 @@ export function registerRecordingHandlers(
 	});
 
 	ipcMain.handle("pause-native-screen-recording", async () => {
+		if (process.platform === "linux" && isCosmicRecordingActive()) {
+			return pauseCosmicRecording();
+		}
 		if (process.platform === "win32") {
 			if (!windowsNativeCaptureActive || !windowsCaptureProcess) {
 				return { success: false, message: "No native Windows screen recording is active." };
@@ -1380,6 +1397,9 @@ export function registerRecordingHandlers(
 	});
 
 	ipcMain.handle("resume-native-screen-recording", async () => {
+		if (process.platform === "linux" && isCosmicRecordingActive()) {
+			return resumeCosmicRecording();
+		}
 		if (process.platform === "win32") {
 			if (!windowsNativeCaptureActive || !windowsCaptureProcess) {
 				return { success: false, message: "No native Windows screen recording is active." };

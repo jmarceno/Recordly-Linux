@@ -1,9 +1,9 @@
-import { TimerIcon } from "@/components/ui/icons";
 import type { ReactElement } from "react";
+import { TimerIcon } from "@/components/ui/icons";
 import { useScopedT } from "@/contexts/I18nContext";
 import styles from "../LaunchWindow.module.css";
-import { DropdownItem, HudPopover } from "./PopoverScaffold";
 import { useLaunchPopoverCoordinator } from "./LaunchPopoverCoordinator";
+import { DropdownItem, HudPopover } from "./PopoverScaffold";
 
 const POPOVER_ID = "countdown";
 const COUNTDOWN_OPTIONS = [0, 3, 5, 10];
@@ -32,6 +32,7 @@ export function CountdownPopover({
 				requestOpen(POPOVER_ID);
 			}}
 			trigger={trigger}
+			menuId="countdown"
 			align="center"
 		>
 			<div className={styles.ddLabel}>{t("recording.countdownDelay")}</div>

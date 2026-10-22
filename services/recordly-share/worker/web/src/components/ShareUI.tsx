@@ -5,7 +5,7 @@ import type { ReactNode } from "react";
 export function Brand() {
 	return (
 		<Link
-			href="https://github.com/webadderallorg/Recordly"
+			href="https://github.com/jmarceno/Recordly-Linux"
 			target="_blank"
 			rel="noopener noreferrer"
 			className="brand"

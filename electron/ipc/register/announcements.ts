@@ -1,7 +1,7 @@
 import { ipcMain } from "electron";
 
-const DEFAULT_ANNOUNCEMENT_FEED_URL =
-	"https://raw.githubusercontent.com/webadderallorg/Recordly/main/announcements.json";
+// Fork: no upstream announcement feed; RECORDLY_ANNOUNCEMENTS_URL can still set one.
+const DEFAULT_ANNOUNCEMENT_FEED_URL = "";
 const ANNOUNCEMENT_FETCH_TIMEOUT_MS = 5_000;
 const ANNOUNCEMENT_CACHE_TTL_MS = 6 * 60 * 60 * 1_000;
 const MAX_ANNOUNCEMENT_FEED_BYTES = 1_000_000;
@@ -13,7 +13,7 @@ let pendingFetch: Promise<unknown> | null = null;
 
 function getAnnouncementFeedUrl(): string | null {
 	const configuredUrl = process.env.RECORDLY_ANNOUNCEMENTS_URL?.trim();
-	if (configuredUrl?.toLowerCase() === "off") {
+	if (configuredUrl?.toLowerCase() === "off" || (!configuredUrl && !DEFAULT_ANNOUNCEMENT_FEED_URL)) {
 		return null;
 	}
 

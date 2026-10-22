@@ -1,3 +1,4 @@
+import { spawn } from "node:child_process";
 import fs from "node:fs";
 import { createRequire } from "node:module";
 import path from "node:path";
@@ -11,6 +12,9 @@ import {
 	setLastLeftClick,
 	setLinuxCursorScreenPoint,
 } from "../state";
+import { getPrebundledNativeHelperPath } from "../paths/binaries";
+import { isLikelyLinuxWaylandSession } from "../register/sourceMapping";
+import { getScreen } from "../utils";
 import type {
 	CursorInteractionType,
 	HookMouseEvent,
@@ -22,7 +26,9 @@ import {
 	getHookCursorScreenPoint,
 	getNormalizedCursorPoint,
 	isCursorCapturePaused,
+	backfillCursorSamples,
 	pushCursorSample,
+	setWaylandCursorMonitorActive,
 } from "./telemetry";
 
 const nodeRequire = createRequire(import.meta.url);
@@ -249,6 +255,11 @@ export async function startInteractionCapture() {
 
 	stopInteractionCapture();
 
+	if (process.platform === "linux" && isLikelyLinuxWaylandSession(process.env)) {
+		startWaylandInteractionCapture();
+		return;
+	}
+
 	try {
 		const hook = loadUiohookModule();
 		console.log(
@@ -330,4 +341,64 @@ export async function startInteractionCapture() {
 			console.warn("[CursorTelemetry] Global interaction capture unavailable:", error);
 		}
 	}
+}
+
+/**
+ * uiohook only sees X11, so on Wayland a native helper reports the pointer
+ * position (ext-image-copy-capture cursor sessions) and mouse buttons (evdev).
+ */
+function startWaylandInteractionCapture() {
+	const helperPath = getPrebundledNativeHelperPath("recordly-wayland-cursor", "linux-x64");
+	if (!fs.existsSync(helperPath)) {
+		console.warn("[CursorTelemetry] Wayland cursor helper missing:", helperPath);
+		return;
+	}
+
+	const child = spawn(helperPath, [], { stdio: ["pipe", "pipe", "pipe"] });
+	setWaylandCursorMonitorActive(true);
+	let buffer = "";
+	let hasPosition = false;
+	child.stdout.on("data", (chunk: Buffer) => {
+		buffer += chunk.toString();
+		const lines = buffer.split("\n");
+		buffer = lines.pop() ?? "";
+		for (const line of lines) {
+			const position = line.match(/^POS:(-?\d+):(-?\d+)$/);
+			if (position) {
+				// Helper points are logical; the telemetry cache stores physical pixels.
+				const scale = getScreen().getPrimaryDisplay().scaleFactor || 1;
+				const first = !hasPosition;
+				hasPosition = true;
+				setLinuxCursorScreenPoint({
+					x: Number(position[1]) * scale,
+					y: Number(position[2]) * scale,
+					updatedAt: Date.now(),
+				});
+				if (first) {
+					const point = getNormalizedCursorPoint();
+					backfillCursorSamples(point.cx, point.cy);
+				}
+				continue;
+			}
+			const interaction = line.match(/^INTERACTION:(mousedown|mouseup)(?::([123]))?$/);
+			if (!interaction) continue;
+			if (interaction[1] === "mouseup") {
+				recordCursorMouseUp();
+			} else {
+				recordCursorMouseDown(normalizeHookMouseButton(Number(interaction[2])));
+			}
+		}
+	});
+	child.stderr.on("data", (chunk: Buffer) => {
+		console.warn("[CursorTelemetry] Wayland cursor helper:", chunk.toString().trim());
+	});
+	child.on("error", (error) => {
+		console.warn("[CursorTelemetry] Wayland cursor helper failed:", error);
+	});
+
+	setInteractionCaptureCleanup(() => {
+		setWaylandCursorMonitorActive(false);
+		child.stdin.end();
+		child.kill();
+	});
 }

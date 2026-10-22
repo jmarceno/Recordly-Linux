@@ -49,3 +49,6 @@ gpu-export-probe.mp4
 # Browser test output
 test-results/
 playwright-report/
+
+# Generated Wayland protocol code
+electron/native/wayland-cursor/build/
