@@ -289,67 +289,6 @@ test("deletion refreshes the grid and keeps unselected projects", async ({ page 
 	await expect(home.getByRole("button", { name: "Keep", exact: true })).toBeVisible();
 });
 
-test("cards rename inline, preserve folder chips and use existing share links", async ({
-	page,
-}) => {
-	await installDesktopBridge(page);
-	await page.addInitScript(() => {
-		let entry = {
-			path: "/projects/demo.recordly",
-			name: "Demo",
-			updatedAt: Date.now(),
-			thumbnailPath: null,
-			isCurrent: false,
-			isInProjectsDirectory: true,
-		};
-		localStorage.setItem(
-			"recordly.project-folders.v1",
-			JSON.stringify([{ id: "folder", name: "Work", color: "#123abc", paths: [entry.path] }]),
-		);
-		localStorage.setItem(
-			"recordly.project-share-links.v1",
-			JSON.stringify({ [entry.path]: "https://example.com/shared/demo" }),
-		);
-		window.electronAPI.listProjectFiles = async () => ({ success: true, entries: [entry] });
-		window.electronAPI.renameLibraryProject = async (_path, name) => {
-			entry = { ...entry, path: `/projects/${name}.recordly`, name };
-			return { success: true, path: entry.path };
-		};
-		window.electronAPI.openExternalUrl = async (url) => {
-			document.documentElement.dataset.openedUrl = url;
-			return { success: true };
-		};
-	});
-	await page.goto("/?windowType=editor");
-	await page.getByRole("button", { name: "Home", exact: true }).click();
-	const home = page.getByRole("dialog", { name: "Projects dashboard" });
-	await expect(home.getByRole("button", { name: "Remove Demo from Work" })).toContainText("Work");
-	await home.getByRole("button", { name: "Options for Demo" }).click();
-	await page.getByRole("menuitem", { name: "View in web", exact: true }).click();
-	await expect(page.locator("html")).toHaveAttribute(
-		"data-opened-url",
-		"https://example.com/shared/demo",
-	);
-	await home.getByRole("button", { name: "Options for Demo" }).click();
-	await page.getByRole("menuitem", { name: "Rename", exact: true }).click();
-	const renameInput = home.getByRole("textbox", { name: "Project name" });
-	await expect(renameInput).toBeFocused();
-	expect(
-		await renameInput.evaluate((input: HTMLInputElement) => [
-			input.selectionStart,
-			input.selectionEnd,
-		]),
-	).toEqual([0, 4]);
-	await home.getByRole("textbox", { name: "Project name" }).fill("Renamed");
-	await page.keyboard.press("Enter");
-	await expect(home.getByRole("button", { name: "Renamed", exact: true })).toBeVisible();
-	await expect(home.getByRole("button", { name: "Remove Renamed from Work" })).toContainText(
-		"Work",
-	);
-	await home.getByRole("button", { name: "Options for Renamed" }).click();
-	await expect(page.getByRole("menuitem", { name: "View in web", exact: true })).toBeVisible();
-});
-
 test("dashboard supports creation sort, independent folders, shared settings and precise captions", async ({
 	page,
 }) => {

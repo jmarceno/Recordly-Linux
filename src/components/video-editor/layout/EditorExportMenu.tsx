@@ -1,8 +1,6 @@
-import { ExportErrorReportButton } from "@/components/feedback/ExportErrorReportButton";
-import { LinkSimple, HardDrive, Export } from "@phosphor-icons/react";
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
-import { CloudShareButton } from "../cloud/CloudShareButton";
-import { Card, TagGroup, Tag } from "@heroui/react";
+import { Export } from "@phosphor-icons/react";
+import { useLayoutEffect, useRef, useState } from "react";
+import { Card } from "@heroui/react";
 import { motion, useReducedMotion } from "motion/react";
 import { ProgressBar } from "@heroui/react";
 
@@ -34,20 +32,10 @@ type Props = {
 	handleStartExportFromDropdown: () => void;
 	revealExportedFile: () => void;
 	exportMessage: string | null;
-	projectTitle: string;
-	prepareExportForShare: () => Promise<string | undefined>;
-	onRequestShareSignIn: () => void;
-	shareRequestNonce: number;
-	authToken?: string;
-	accountId?: string;
 };
 
 export function EditorExportMenu(props: Props) {
-	const { publishDestination: destination, setPublishDestination: setDestination } =
-		props.exportSettings;
-	const [shareBusy, setShareBusy] = useState(false);
 	const reducedMotion = useReducedMotion();
-	const handledShareRequest = useRef(0);
 	const contentRef = useRef<HTMLDivElement>(null);
 	const [contentHeight, setContentHeight] = useState<number>();
 	useLayoutEffect(() => {
@@ -62,13 +50,6 @@ export function EditorExportMenu(props: Props) {
 		observer.observe(content);
 		return () => observer.disconnect();
 	}, [props.exportSession.showExportDropdown]);
-	useEffect(() => {
-		if (props.shareRequestNonce > handledShareRequest.current) {
-			handledShareRequest.current = props.shareRequestNonce;
-			setDestination("link");
-			props.handleOpenExportDropdown();
-		}
-	}, [props.shareRequestNonce, props.handleOpenExportDropdown, setDestination]);
 
 	const {
 		t,
@@ -133,7 +114,7 @@ export function EditorExportMenu(props: Props) {
 
 	const settingsForm = (
 		<ExportSettingsMenu
-			exportFormat={destination === "link" ? "mp4" : exportFormat}
+			exportFormat={exportFormat}
 			onExportFormatChange={setExportFormat}
 			exportEncodingMode={exportEncodingMode}
 			onExportEncodingModeChange={setExportEncodingMode}
@@ -158,8 +139,6 @@ export function EditorExportMenu(props: Props) {
 			gifOutputDimensions={gifOutputDimensions}
 			onExport={handleStartExportFromDropdown}
 			hideHeading
-			hideAction={destination === "link"}
-			linkMode={destination === "link"}
 			className="rounded-none bg-transparent px-5 pb-5 pt-0 shadow-none"
 		/>
 	);
@@ -169,7 +148,6 @@ export function EditorExportMenu(props: Props) {
 			<Popover
 				open={showExportDropdown}
 				onOpenChange={(open) => {
-					if (shareBusy) return;
 					if (open) {
 						handleOpenExportDropdown();
 					} else setShowExportDropdown(false);
@@ -182,16 +160,14 @@ export function EditorExportMenu(props: Props) {
 						className="inline-flex h-9 min-w-[104px] items-center justify-center gap-2 px-4.5"
 					>
 						<Export className="h-4 w-4" />
-						<span className="text-sm font-semibold tracking-tight">Publish</span>
+						<span className="text-sm font-semibold tracking-tight">Export</span>
 					</Button>
 				</PopoverTrigger>
 				<PopoverContent
-					aria-label="Publish"
+					aria-label="Export"
 					align="end"
 					sideOffset={10}
 					className="w-[360px] max-h-none overflow-hidden p-0"
-					isKeyboardDismissDisabled={shareBusy}
-					shouldCloseOnInteractOutside={() => !shareBusy}
 				>
 					<motion.div
 						initial={false}
@@ -200,70 +176,11 @@ export function EditorExportMenu(props: Props) {
 						className="overflow-hidden"
 					>
 						<div ref={contentRef}>
-							<div className="p-5 space-y-3">
-								<h2 className="text-sm font-semibold">Publish</h2>
-								<TagGroup
-									aria-label="Publish destination"
-									selectionMode="single"
-									disallowEmptySelection
-									selectedKeys={[destination]}
-									onSelectionChange={(keys) => {
-										if (
-											keys !== "all" &&
-											keys.size > 0 &&
-											!isExporting &&
-											!shareBusy
-										)
-											setDestination(keys.has("link") ? "link" : "local");
-									}}
-								>
-									<TagGroup.List className="flex gap-2">
-										<Tag
-											id="link"
-											isDisabled={isExporting || shareBusy}
-											className="h-24 flex-1 flex-col justify-center gap-2 rounded-xl border border-foreground/10"
-										>
-											<LinkSimple className="size-6" />
-											Link
-										</Tag>
-										<Tag
-											id="local"
-											isDisabled={isExporting || shareBusy}
-											className="h-24 flex-1 flex-col justify-center gap-2 rounded-xl border border-foreground/10"
-										>
-											<HardDrive className="size-6" />
-											Local
-										</Tag>
-									</TagGroup.List>
-								</TagGroup>
+							<div className="p-5 pb-3">
+								<h2 className="text-sm font-semibold">Export</h2>
 							</div>
 							<div>
-								{destination === "link" ? (
-									<div className="px-5 pb-5">
-										<CloudShareButton
-											inline
-											projectPath={props.projectPath}
-											projectTitle={props.projectTitle}
-											prepareFile={props.prepareExportForShare}
-											onCancelPrepare={handleCancelExport}
-											preparationProgress={exportProgress?.percentage ?? 0}
-											authToken={props.authToken}
-											accountId={props.accountId}
-											onBusyChange={setShareBusy}
-											onRequestSignIn={() => {
-												setShowExportDropdown(false);
-												props.onRequestShareSignIn();
-											}}
-										/>
-										{exportError && !shareBusy && (
-											<ExportErrorReportButton
-												key={exportError}
-												error={exportError}
-												format="mp4"
-											/>
-										)}
-									</div>
-								) : isExporting ? (
+								{isExporting ? (
 									<Card className="rounded-none bg-transparent p-5 text-foreground shadow-none">
 										<div className="mb-3 flex items-center justify-between gap-3">
 											<div>
@@ -390,11 +307,6 @@ export function EditorExportMenu(props: Props) {
 											>
 												{t("editor.exportStatus.copyError", "Copy error")}
 											</Button>
-											<ExportErrorReportButton
-												key={exportError}
-												error={exportError}
-												format={exportFormat}
-											/>
 											{hasPendingExportSave ? (
 												<Button
 													type="button"
@@ -447,7 +359,7 @@ export function EditorExportMenu(props: Props) {
 												onClick={handleExportDropdownClose}
 												className="h-8 flex-1 text-xs"
 											>
-												{t("editor.cloud.done")}
+												{t("editor.clipImport.done")}
 											</Button>
 										</div>
 									</Card>

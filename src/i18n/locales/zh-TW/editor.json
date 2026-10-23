@@ -1,43 +1,5 @@
 {
-	"cloud": {
-		"signInRequired": "建立分享連結前，請先登入 Recordly。",
-		"prepareFailed": "無法準備目前的剪輯以供分享。",
-		"uploadFailed": "雲端上傳失敗。",
-		"linkCreated": "分享連結已建立",
-		"linkCopied": "連結已複製",
-		"copyFailed": "無法複製連結，請選取後手動複製。",
-		"copied": "已複製",
-		"copy": "複製",
-		"preparing": "正在準備目前的剪輯…",
-		"createLink": "建立連結",
-		"heading": "分享到雲端",
-		"ready": "影片已準備好，可以分享了。",
-		"openPage": "開啟分享頁面",
-		"notes": "備註",
-		"publish": "發布並建立連結",
-		"createLinkTitle": "建立可分享的連結",
-		"notesPlaceholder": "為觀眾新增背景資訊、說明或簡短摘要…",
-		"description": "將目前的剪輯發布到 Recordly 觀看及回饋頁面，無需下載。分享的影片最高為 1080p。",
-		"uploading": "正在上傳… {progress}%",
-		"googleUnavailable": "尚未啟用 Google 登入。請使用電子郵件，或請 Recordly 管理員連結 Google。",
-		"xUnavailable": "尚未啟用 X 登入。請使用電子郵件，或請 Recordly 管理員連結 X。",
-		"providerUnavailable": "尚未啟用此登入方式，請先使用電子郵件。",
-		"enterEmail": "請先輸入電子郵件地址。",
-		"resetSent": "密碼重設郵件已寄出。",
-		"accountHeading": "你的 Recordly 帳戶",
-		"signInHeading": "登入 Recordly",
-		"signInShareDescription": "登入後即可發布此影片並管理分享連結。",
-		"signInDescription": "存取你的錄影內容和分享連結。",
-		"signingOut": "正在登出…",
-		"signOut": "登出",
-		"signingIn": "正在登入…",
-		"signIn": "登入",
-		"or": "或",
-		"email": "電子郵件",
-		"password": "密碼",
-		"forgotPassword": "忘記密碼？",
-		"unavailable": "此版本尚不支援雲端登入，你仍可將影片儲存到電腦。",
-		"createShareLink": "建立分享連結",
+	"clipImport": {
 		"done": "完成",
 		"addingVideo": "正在新增影片…",
 		"preparingFootage": "正在為時間軸準備影片與音訊。"
@@ -91,7 +53,6 @@
 		"solidColor": "純色 (審查)",
 		"borderRadius": "邊框半徑"
 	},
-
 	"fontStyles": {
 		"classic": "經典",
 		"editor": "編輯器",
@@ -133,15 +94,6 @@
 		"adjustStep": "2. 調整",
 		"adjustDesc": "拖動紅色區域的邊緣，精確覆蓋要剪掉的部分。"
 	},
-	"feedback": {
-		"trigger": "反饋",
-		"title": "反饋與聯絡",
-		"description": "如果有問題或缺失功能，可以直接聯絡或提交 issue。",
-		"emailLabel": "信箱",
-		"xLabel": "X",
-		"reportIssue": "報告問題 / 提交反饋",
-		"openFailed": "打開連結失敗。"
-	},
 	"keyboardShortcuts": {
 		"trigger": "快速鍵",
 		"title": "鍵盤快速鍵",
@@ -169,7 +121,6 @@
 		"experimentalBuilds": "提示：可在設定中開啟實驗版本存取權",
 		"cursorAppearance": "提示：你可以自訂游標外觀"
 	},
-	"account": { "title": "帳號", "comingSoon": "帳號功能即將推出" },
 	"nativeCaptureUnavailable": {
 		"title": "沒有出錯，但我們無法轉譯動畫游標覆蓋層。",
 		"description": "你的裝置不支援原生擷取。這可能是由我們尚未釐清的多種原因造成的。Recordly 仍可繼續運作，但無法進行游標平滑處理。",

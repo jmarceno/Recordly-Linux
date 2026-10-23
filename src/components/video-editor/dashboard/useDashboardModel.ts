@@ -1,4 +1,3 @@
-import { removeProjectShareLinks } from "../cloud/projectShareLinks";
 import { useRawLibrary } from "./useRawLibrary";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "@/components/ui/toast";
@@ -101,7 +100,6 @@ export function useDashboardModel({
 	const deleteEntries = (paths: string[]) =>
 		run(async () => {
 			const deleted = await (isRaw ? raw.remove : onDeleteProjects)(paths);
-			removeProjectShareLinks(deleted);
 			save(
 				folders.map((folder) => ({
 					...folder,

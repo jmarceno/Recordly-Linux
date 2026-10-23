@@ -40,12 +40,8 @@ interface EditorDialogsProps {
 	projectLibraryEntries: ProjectLibraryEntry[];
 	projectLibraryLoading: boolean;
 	projectError: string | null;
-	onDashboardSignIn: () => void;
 	onDeleteProjects: (paths: string[]) => Promise<string[]>;
 	onRenameProject: (path: string, name: string) => Promise<string>;
-	onShareProject: (path: string) => Promise<void>;
-	accountLabel?: string;
-	authToken?: string;
 	handleImportMediaOrProject: () => Promise<void>;
 	handleOpenProjectFromLibrary: (projectPath: string) => Promise<unknown>;
 	nativeCaptureUnavailableModalOpen: boolean;
@@ -71,12 +67,8 @@ export function EditorDialogs({
 	projectLibraryEntries,
 	projectLibraryLoading,
 	projectError,
-	onDashboardSignIn,
 	onDeleteProjects,
 	onRenameProject,
-	onShareProject,
-	accountLabel,
-	authToken,
 	handleImportMediaOrProject,
 	handleOpenProjectFromLibrary,
 	nativeCaptureUnavailableModalOpen,
@@ -191,12 +183,8 @@ export function EditorDialogs({
 				entries={projectLibraryEntries}
 				loading={projectLibraryLoading}
 				error={projectError}
-				onSignIn={onDashboardSignIn}
 				onDeleteProjects={onDeleteProjects}
 				onRenameProject={onRenameProject}
-				onShareProject={onShareProject}
-				accountLabel={accountLabel}
-				authToken={authToken}
 				onImportFile={handleImportMediaOrProject}
 				onOpenProject={handleOpenProjectFromLibrary}
 			/>

@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { SettingsRow } from "@/components/video-editor/SettingsRow";
 
-export function RecordingPermissionsSettings({ onReview }: { onReview?: () => void }) {
+export function RecordingPermissionsSettings() {
 	const [status, setStatus] = useState<{
 		mac: boolean;
 		screen: boolean;
@@ -106,17 +106,6 @@ export function RecordingPermissionsSettings({ onReview }: { onReview?: () => vo
 						Try again
 					</Button>
 				</div>
-			)}
-			{onReview && (
-				<SettingsRow
-					title="Permission setup"
-					description="Review access and open system permission settings."
-					stacked
-				>
-					<Button variant="secondary" size="sm" onClick={onReview}>
-						Review permissions
-					</Button>
-				</SettingsRow>
 			)}
 		</div>
 	);

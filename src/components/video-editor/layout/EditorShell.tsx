@@ -1,14 +1,10 @@
-import { OnboardingController } from "@/components/auth/OnboardingController";
-import { AccountProfileContext } from "@/components/ui/account-avatar";
 import { DashboardSettingsContext } from "../dashboard/DashboardSettings";
-import { RecordlySignInDialog, type SignInReason } from "@/components/auth/RecordlySignInDialog";
-import { useRecordlyAuth } from "@/components/auth/useRecordlyAuth";
 import { useVideoSourceRecovery } from "../hooks/useVideoSourceRecovery";
 import { useRecordingLibrary } from "../library/useRecordingLibrary";
 import { RecordingLibraryPanel } from "../library/RecordingLibraryPanel";
 import { RECORDING_DRAG_TYPE } from "@/types/recordingLibrary";
 import { Button } from "@/components/ui/button";
-import { useCallback, useMemo, useEffect, useRef, useState, type ComponentProps } from "react";
+import { useCallback, useMemo, useEffect, useRef, type ComponentProps } from "react";
 import { EditorAnnouncementBanner } from "@/components/announcements/EditorAnnouncementBanner";
 import { Toaster } from "@/components/ui/toast";
 import type { useI18n } from "@/contexts/I18nContext";
@@ -58,24 +54,6 @@ type Props = {
 };
 
 export function EditorShell(props: Props) {
-	const [onboardingRequest, setOnboardingRequest] = useState(0);
-	const showOnboarding = useCallback(() => setOnboardingRequest((value) => value + 1), []);
-	const [signInOpen, setSignInOpen] = useState(false);
-	const [signInReason, setSignInReason] = useState<SignInReason>("account");
-	const [shareRequestNonce, setShareRequestNonce] = useState(0);
-	const auth = useRecordlyAuth();
-	const requestSignIn = (reason: SignInReason) => {
-		if (reason === "share" && auth.user) {
-			setShareRequestNonce((value) => value + 1);
-			return;
-		}
-		setSignInReason(reason);
-		setSignInOpen(true);
-	};
-	const handleAuthenticated = useCallback(() => {
-		setSignInOpen(false);
-		if (signInReason === "share") setShareRequestNonce((value) => value + 1);
-	}, [signInReason]);
 	const {
 		t,
 		project,
@@ -142,85 +120,49 @@ export function EditorShell(props: Props) {
 		() => (
 			<SettingsPanel
 				{...settingsPanelProps}
-				accountUser={auth.user}
-				onShowOnboarding={showOnboarding}
 				activeEffectSection="settings"
 				selectedAnnotationId={null}
 				selectedClipId={null}
 				advanced
 			/>
 		),
-		[settingsPanelProps, showOnboarding, auth.user],
-	);
-	const onboarding = (
-		<OnboardingController
-			requestNonce={onboardingRequest}
-			ready={!project.loading && !auth.loading}
-			user={auth.user}
-			configured={auth.configured}
-			callbackError={auth.callbackError}
-		/>
+		[settingsPanelProps],
 	);
 	const editorDialogs = (
-		<AccountProfileContext.Provider value={auth.user}>
-			<DashboardSettingsContext.Provider value={dashboardSettingsContent}>
-				<EditorDialogs
-					t={t}
-					projectSaveDialogOpen={project.projectSaveDialogOpen}
-					setProjectSaveDialogOpen={project.setProjectSaveDialogOpen}
-					projectSaveDialogDraft={project.projectSaveDialogDraft}
-					setProjectSaveDialogDraft={project.setProjectSaveDialogDraft}
-					projectSaveDialogInputRef={ui.projectSaveDialogInputRef}
-					isSavingProjectDialog={project.isSavingProjectDialog}
-					resolveProjectSaveDialog={lifecycle.resolveProjectSaveDialog}
-					handleProjectSaveDialogSubmit={saveActions.handleProjectSaveDialogSubmit}
-					unsavedChangesDialogOpen={project.unsavedChangesDialogOpen}
-					setUnsavedChangesDialogOpen={project.setUnsavedChangesDialogOpen}
-					unsavedChangesDialogActionLabel={project.unsavedChangesDialogActionLabel}
-					resolveUnsavedChangesDialog={lifecycle.resolveUnsavedChangesDialog}
-					projectBrowserOpen={project.projectBrowserOpen}
-					setProjectBrowserOpen={project.setProjectBrowserOpen}
-					projectLibraryEntries={project.projectLibraryEntries}
-					projectLibraryLoading={project.projectLibraryLoading}
-					projectError={project.error}
-					onDashboardSignIn={() => requestSignIn("account")}
-					onDeleteProjects={openActions.handleDeleteProjects}
-					onRenameProject={openActions.handleRenameLibraryProject}
-					onShareProject={async (path) => {
-						if (
-							path !== project.currentProjectPath &&
-							!(await openActions.handleOpenProjectFromLibrary(path))
-						)
-							return;
-						project.setProjectBrowserOpen(false);
-						if (!auth.user) requestSignIn("share");
-						else setShareRequestNonce((value) => value + 1);
-					}}
-					accountLabel={auth.user?.email}
-					authToken={auth.accessToken}
-					handleImportMediaOrProject={openActions.handleImportMediaOrProject}
-					handleOpenProjectFromLibrary={openActions.handleOpenProjectFromLibrary}
-					nativeCaptureUnavailableModalOpen={ui.nativeCaptureUnavailableModalOpen}
-					setNativeCaptureUnavailableModalOpen={ui.setNativeCaptureUnavailableModalOpen}
-				/>
-			</DashboardSettingsContext.Provider>
-		</AccountProfileContext.Provider>
+		<DashboardSettingsContext.Provider value={dashboardSettingsContent}>
+			<EditorDialogs
+				t={t}
+				projectSaveDialogOpen={project.projectSaveDialogOpen}
+				setProjectSaveDialogOpen={project.setProjectSaveDialogOpen}
+				projectSaveDialogDraft={project.projectSaveDialogDraft}
+				setProjectSaveDialogDraft={project.setProjectSaveDialogDraft}
+				projectSaveDialogInputRef={ui.projectSaveDialogInputRef}
+				isSavingProjectDialog={project.isSavingProjectDialog}
+				resolveProjectSaveDialog={lifecycle.resolveProjectSaveDialog}
+				handleProjectSaveDialogSubmit={saveActions.handleProjectSaveDialogSubmit}
+				unsavedChangesDialogOpen={project.unsavedChangesDialogOpen}
+				setUnsavedChangesDialogOpen={project.setUnsavedChangesDialogOpen}
+				unsavedChangesDialogActionLabel={project.unsavedChangesDialogActionLabel}
+				resolveUnsavedChangesDialog={lifecycle.resolveUnsavedChangesDialog}
+				projectBrowserOpen={project.projectBrowserOpen}
+				setProjectBrowserOpen={project.setProjectBrowserOpen}
+				projectLibraryEntries={project.projectLibraryEntries}
+				projectLibraryLoading={project.projectLibraryLoading}
+				projectError={project.error}
+				onDeleteProjects={openActions.handleDeleteProjects}
+				onRenameProject={openActions.handleRenameLibraryProject}
+				handleImportMediaOrProject={openActions.handleImportMediaOrProject}
+				handleOpenProjectFromLibrary={openActions.handleOpenProjectFromLibrary}
+				nativeCaptureUnavailableModalOpen={ui.nativeCaptureUnavailableModalOpen}
+				setNativeCaptureUnavailableModalOpen={ui.setNativeCaptureUnavailableModalOpen}
+			/>
+		</DashboardSettingsContext.Provider>
 	);
 	if (project.loading && !project.error)
 		return (
 			<>
 				{getStartupView() === "home" ? <HomeLoadingSkeleton /> : <EditorLoadingSkeleton />}
-				<RecordlySignInDialog
-					open={signInOpen}
-					onOpenChange={setSignInOpen}
-					reason={signInReason}
-					user={auth.user}
-					configured={auth.configured}
-					callbackError={auth.callbackError}
-					onAuthenticated={handleAuthenticated}
-				/>
 				{editorDialogs}
-				{onboarding}
 				<Toaster className="pointer-events-auto" />
 			</>
 		);
@@ -241,17 +183,7 @@ export function EditorShell(props: Props) {
 						Open Projects
 					</Button>
 				</div>
-				<RecordlySignInDialog
-					open={signInOpen}
-					onOpenChange={setSignInOpen}
-					reason={signInReason}
-					user={auth.user}
-					configured={auth.configured}
-					callbackError={auth.callbackError}
-					onAuthenticated={handleAuthenticated}
-				/>
 				{editorDialogs}
-				{onboarding}
 				<Toaster className="pointer-events-auto" />
 			</div>
 		);
@@ -289,11 +221,6 @@ export function EditorShell(props: Props) {
 				handleCancelExport={dialogActions.handleCancelExport}
 				handleRetrySaveExport={dialogActions.handleRetrySaveExport}
 				handleStartExportFromDropdown={dialogActions.handleStartExportFromDropdown}
-				prepareExportForShare={dialogActions.prepareExportForShare}
-				onRequestShareSignIn={() => requestSignIn("share")}
-				shareRequestNonce={shareRequestNonce}
-				authToken={auth.accessToken}
-				accountId={auth.user?.id}
 				revealExportedFile={dialogActions.revealExportedFile}
 				exportMessage={exportMessage}
 			/>
@@ -346,8 +273,6 @@ export function EditorShell(props: Props) {
 			>
 				<div className="relative z-10 flex min-h-0 flex-1 pt-3">
 					<EditorSidebar
-						accountUser={auth.user}
-						onAccountClick={() => requestSignIn("account")}
 						panelContent={
 							library.open ? <RecordingLibraryPanel library={library} /> : undefined
 						}
@@ -362,11 +287,7 @@ export function EditorShell(props: Props) {
 							timeline.setSelectedCaptionId(null);
 							ui.setActiveEffectSection(section);
 						}}
-						settingsPanelProps={{
-							...settingsPanelProps,
-							accountUser: auth.user,
-							onShowOnboarding: showOnboarding,
-						}}
+						settingsPanelProps={settingsPanelProps}
 					/>
 					<EditorPreviewPanel
 						t={t}
@@ -433,9 +354,9 @@ export function EditorShell(props: Props) {
 					aria-live="polite"
 				>
 					<div className="rounded-xl border border-separator bg-background p-6 text-center">
-						<p className="font-medium">{t("editor.cloud.addingVideo")}</p>
+						<p className="font-medium">{t("editor.clipImport.addingVideo")}</p>
 						<p className="mt-2 text-sm text-muted-foreground">
-							{t("editor.cloud.preparingFootage")}
+							{t("editor.clipImport.preparingFootage")}
 						</p>
 						<Button
 							className="mt-4"
@@ -449,17 +370,7 @@ export function EditorShell(props: Props) {
 					</div>
 				</div>
 			)}
-			<RecordlySignInDialog
-				open={signInOpen}
-				onOpenChange={setSignInOpen}
-				reason={signInReason}
-				user={auth.user}
-				configured={auth.configured}
-				callbackError={auth.callbackError}
-				onAuthenticated={handleAuthenticated}
-			/>
 			{editorDialogs}
-			{onboarding}
 			<CropEditorDialog
 				open={ui.showCropModal}
 				t={t}

@@ -1,15 +1,5 @@
-import { AccountAvatar } from "@/components/ui/account-avatar";
-import type { User } from "@supabase/supabase-js";
 import { Camera, ClosedCaptioning, Cursor, Gear, FrameCorners } from "@/components/ui/icons";
-import {
-	ToggleButtonGroup,
-	ToggleButton,
-	Button,
-	Tooltip,
-	Card,
-	Switch,
-	Label,
-} from "@heroui/react";
+import { ToggleButtonGroup, ToggleButton, Tooltip, Card, Switch, Label } from "@heroui/react";
 import type { ComponentProps, ReactNode } from "react";
 import { useMemo, useState } from "react";
 import type { useI18n } from "@/contexts/I18nContext";
@@ -18,9 +8,7 @@ import { SettingsPanel } from "../SettingsPanel";
 import type { EditorEffectSection } from "../types";
 
 type Props = {
-	accountUser?: User | null;
 	panelContent?: ReactNode;
-	onAccountClick?: () => void;
 	t: ReturnType<typeof useI18n>["t"];
 	activeSection: EditorEffectSection;
 	setActiveSection: (section: EditorEffectSection) => void;
@@ -29,12 +17,10 @@ type Props = {
 
 export function EditorSidebar({
 	t,
-	accountUser,
 	activeSection,
 	setActiveSection,
 	settingsPanelProps,
 	panelContent,
-	onAccountClick,
 }: Props) {
 	const [advancedSections, setAdvancedSections] = useState<Record<string, boolean>>({});
 	const advanced = advancedSections[activeSection] ?? false;
@@ -104,18 +90,6 @@ export function EditorSidebar({
 						</Tooltip>
 					))}
 				</ToggleButtonGroup>
-				<Tooltip>
-					<Button
-						variant="ghost"
-						isIconOnly
-						className="mt-auto"
-						aria-label="Recordly account"
-						onPress={onAccountClick}
-					>
-						<AccountAvatar user={accountUser} className="!size-7" />
-					</Button>
-					<Tooltip.Content placement="right">Account</Tooltip.Content>
-				</Tooltip>
 			</nav>
 			<aside
 				aria-label={panelContent ? "Clips" : undefined}

@@ -1,17 +1,9 @@
 import { createContext, useContext, useState, type ReactNode } from "react";
 import { ChoiceGroup, ChoiceItem } from "@/components/ui/choice-group";
 
-type Category =
-	| "general"
-	| "account"
-	| "permissions"
-	| "motion"
-	| "recording"
-	| "files"
-	| "advanced";
+type Category = "general" | "permissions" | "motion" | "recording" | "files" | "advanced";
 const labels: Record<Category, string> = {
 	general: "General",
-	account: "Account",
 	permissions: "Permissions",
 	motion: "Motion",
 	recording: "Recording",

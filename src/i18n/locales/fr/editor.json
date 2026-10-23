@@ -1,43 +1,5 @@
 {
-	"cloud": {
-		"signInRequired": "Connectez-vous à Recordly avant de créer un lien de partage.",
-		"prepareFailed": "Impossible de préparer le montage actuel pour le partage.",
-		"uploadFailed": "Échec de l’envoi dans le cloud.",
-		"linkCreated": "Lien de partage créé",
-		"linkCopied": "Lien copié",
-		"copyFailed": "Impossible de copier le lien. Sélectionnez-le et copiez-le manuellement.",
-		"copied": "Copié",
-		"copy": "Copier",
-		"preparing": "Préparation du montage actuel…",
-		"createLink": "Créer un lien",
-		"heading": "Partager dans le cloud",
-		"ready": "Votre vidéo est prête à être partagée.",
-		"openPage": "Ouvrir la page de partage",
-		"notes": "Notes",
-		"publish": "Publier et créer un lien",
-		"createLinkTitle": "Créer un lien de partage",
-		"notesPlaceholder": "Ajoutez du contexte, des instructions ou un bref résumé pour les spectateurs…",
-		"description": "Publiez le montage actuel sur une page Recordly de visionnage et de commentaires. Aucun téléchargement n’est nécessaire. Les vidéos sont préparées jusqu’en 1080p.",
-		"uploading": "Envoi… {progress}%",
-		"googleUnavailable": "La connexion Google n’est pas encore activée. Utilisez votre e-mail ou demandez à votre administrateur Recordly de connecter Google.",
-		"xUnavailable": "La connexion X n’est pas encore activée. Utilisez votre e-mail ou demandez à votre administrateur Recordly de connecter X.",
-		"providerUnavailable": "Ce mode de connexion n’est pas encore activé. Utilisez votre e-mail.",
-		"enterEmail": "Saisissez d’abord votre adresse e-mail.",
-		"resetSent": "E-mail de réinitialisation du mot de passe envoyé.",
-		"accountHeading": "Votre compte Recordly",
-		"signInHeading": "Se connecter à Recordly",
-		"signInShareDescription": "Connectez-vous pour publier cette vidéo et gérer son lien de partage.",
-		"signInDescription": "Accédez à vos enregistrements et liens partagés.",
-		"signingOut": "Déconnexion…",
-		"signOut": "Se déconnecter",
-		"signingIn": "Connexion…",
-		"signIn": "Se connecter",
-		"or": "ou",
-		"email": "E-mail",
-		"password": "Mot de passe",
-		"forgotPassword": "Mot de passe oublié ?",
-		"unavailable": "La connexion au cloud n’est pas encore disponible dans cette version. Vous pouvez toujours enregistrer des vidéos sur votre ordinateur.",
-		"createShareLink": "Créer un lien de partage",
+	"clipImport": {
 		"done": "Terminé",
 		"addingVideo": "Ajout de la vidéo…",
 		"preparingFootage": "Préparation de la vidéo et de l’audio pour la timeline."
@@ -91,7 +53,6 @@
 		"solidColor": "Couleur unie (censure)",
 		"borderRadius": "Rayon de bordure"
 	},
-
 	"fontStyles": {
 		"classic": "Classique",
 		"editor": "Éditeur",
@@ -133,15 +94,6 @@
 		"adjustStep": "2. Ajuster",
 		"adjustDesc": "Faites glisser les bords de la zone rouge pour couvrir exactement ce que vous souhaitez retirer."
 	},
-	"feedback": {
-		"trigger": "Retour",
-		"title": "Retour et contact",
-		"description": "Contactez-nous directement ou ouvrez un ticket si quelque chose ne fonctionne pas ou manque.",
-		"emailLabel": "Email",
-		"xLabel": "X",
-		"reportIssue": "Signaler un problème / envoyer un retour",
-		"openFailed": "Échec de l’ouverture du lien."
-	},
 	"keyboardShortcuts": {
 		"trigger": "Raccourcis",
 		"title": "Raccourcis clavier",
@@ -169,7 +121,6 @@
 		"experimentalBuilds": "Astuce : Activez l’accès aux versions expérimentales dans les paramètres",
 		"cursorAppearance": "Astuce : Vous pouvez personnaliser l’apparence du curseur"
 	},
-	"account": { "title": "Compte", "comingSoon": "Compte bientôt disponible" },
 	"nativeCaptureUnavailable": {
 		"title": "Rien n'est cassé, mais nous ne pourrons pas afficher une superposition animée du curseur.",
 		"description": "Votre appareil ne prend pas en charge la capture native. Cela peut arriver pour plusieurs raisons que nous n'avons pas encore identifiées. Recordly continuera de fonctionner, mais le lissage du curseur sera impossible.",

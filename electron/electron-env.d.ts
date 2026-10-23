@@ -967,51 +967,9 @@ interface Window {
 		isWindowFullscreen: () => Promise<boolean>;
 		onWindowFullscreenChanged: (callback: (isFullscreen: boolean) => void) => () => void;
 		getLinuxWindowSystem: () => Promise<"wayland" | "x11" | null>;
-		ackAuthCallbackUrl: (url: string) => Promise<void>;
-		getPendingAuthCallbackUrl: () => Promise<string | null>;
-		onAuthCallbackUrl: (callback: (url: string) => void) => () => void;
 		revealInFolder: (
 			filePath: string,
 		) => Promise<{ success: boolean; error?: string; message?: string }>;
-		cloudShareUpload: (input: {
-			filePath: string;
-			endpoint: string;
-			token?: string;
-			title?: string;
-			notes?: string;
-			uploadId?: string;
-		}) => Promise<{
-			success: boolean;
-			uploadId?: string;
-			shareUrl?: string;
-			canceled?: boolean;
-			error?: string;
-		}>;
-		cloudShareManage: (input: {
-			endpoint: string;
-			token: string;
-			action: "list" | "delete";
-			shareCode?: string;
-		}) => Promise<{
-			success: boolean;
-			error?: string;
-			videos?: Array<{
-				code: string;
-				createdAt?: string;
-				title: string;
-				size: number;
-				ready: boolean;
-				url: string;
-			}>;
-		}>;
-		cloudShareCancel: (uploadId: string) => Promise<{ success: boolean }>;
-		onCloudShareProgress: (
-			callback: (progress: {
-				uploadId: string;
-				uploadedBytes: number;
-				totalBytes: number;
-			}) => void,
-		) => () => void;
 		openRecordingsFolder: () => Promise<{ success: boolean; error?: string; message?: string }>;
 		getRecordingsDirectory: () => Promise<{
 			success: boolean;
@@ -1043,8 +1001,6 @@ interface Window {
 		}>;
 		/** Returns the app version from package.json */
 		getAppVersion: () => Promise<string>;
-		/** Returns the configured remote announcement feed, or null when unavailable. */
-		getAnnouncements: () => Promise<unknown | null>;
 		/** Hide the OS cursor before browser capture starts. */
 		hideOsCursor: () => Promise<{ success: boolean }>;
 		/** Recording preferences (mic, system audio, webcam) */

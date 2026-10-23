@@ -1,4 +1,3 @@
-import { FeedbackDialog } from "@/components/feedback/FeedbackDialog";
 import { Separator } from "@heroui/react";
 import {
 	House,
@@ -54,11 +53,6 @@ type Props = {
 	handleStartExportFromDropdown: () => void;
 	revealExportedFile: () => void;
 	exportMessage: string | null;
-	prepareExportForShare: () => Promise<string | undefined>;
-	onRequestShareSignIn: () => void;
-	shareRequestNonce: number;
-	authToken?: string;
-	accountId?: string;
 };
 
 export function EditorHeader(props: Props) {
@@ -222,7 +216,6 @@ export function EditorHeader(props: Props) {
 					</Button>
 				</div>
 				{SHOW_PRESETS_BUTTON && <EditorPresetMenu t={t} presets={presets} />}
-				<FeedbackDialog />
 				<EditorExportMenu
 					t={t}
 					exportSettings={exportSettings}
@@ -241,12 +234,6 @@ export function EditorHeader(props: Props) {
 					revealExportedFile={revealExportedFile}
 					exportMessage={exportMessage}
 					projectPath={project.currentProjectPath}
-					projectTitle={projectDisplayName}
-					prepareExportForShare={props.prepareExportForShare}
-					onRequestShareSignIn={props.onRequestShareSignIn}
-					shareRequestNonce={props.shareRequestNonce}
-					authToken={props.authToken}
-					accountId={props.accountId}
 				/>
 			</div>
 		</header>

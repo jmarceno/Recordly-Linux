@@ -45,19 +45,9 @@ export function DashboardSettings({ onImportFile }: { onImportFile: () => Promis
 		<section aria-label="Dashboard settings" className="dashboard-settings max-w-2xl py-10">
 			<h1 className="mb-8 text-lg font-semibold">Settings</h1>
 			<SettingsSections
-				categories={[
-					"general",
-					"account",
-					"permissions",
-					"motion",
-					"recording",
-					"files",
-					"advanced",
-				]}
+				categories={["general", "permissions", "motion", "recording", "files", "advanced"]}
 			>
-				<SettingsCategory
-					category={["general", "account", "permissions", "motion", "advanced"]}
-				>
+				<SettingsCategory category={["general", "permissions", "motion", "advanced"]}>
 					{settingsContent}
 				</SettingsCategory>
 				<SettingsCategory category="files">

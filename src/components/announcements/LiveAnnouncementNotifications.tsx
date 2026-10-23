@@ -27,7 +27,7 @@ export function LiveAnnouncementNotifications({ audience }: { audience: Announce
 			const impressionCounts = readAnnouncementImpressionCounts();
 			const [appVersion, remoteFeed] = await Promise.all([
 				window.electronAPI.getAppVersion().catch(() => "0.0.0"),
-				window.electronAPI.getAnnouncements().catch(() => null),
+				Promise.resolve(null),
 			]);
 			if (cancelled) {
 				return;

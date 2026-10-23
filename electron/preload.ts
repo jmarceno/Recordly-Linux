@@ -1065,44 +1065,8 @@ contextBridge.exposeInMainWorld("electronAPI", {
 	getLinuxWindowSystem: () => {
 		return ipcRenderer.invoke("get-linux-window-system");
 	},
-	ackAuthCallbackUrl: (url: string) => ipcRenderer.invoke("auth:ack-callback", url),
-	getPendingAuthCallbackUrl: () => ipcRenderer.invoke("auth:get-pending-callback"),
-	onAuthCallbackUrl: (callback: (url: string) => void) => {
-		const listener = (_event: Electron.IpcRendererEvent, url: string) => callback(url);
-		ipcRenderer.on("auth:callback", listener);
-		return () => ipcRenderer.removeListener("auth:callback", listener);
-	},
 	revealInFolder: (filePath: string) => {
 		return ipcRenderer.invoke("reveal-in-folder", filePath);
-	},
-	cloudShareUpload: (input: {
-		filePath: string;
-		endpoint: string;
-		token?: string;
-		title?: string;
-		notes?: string;
-		uploadId?: string;
-	}) => ipcRenderer.invoke("cloud-share-upload", input),
-	cloudShareManage: (input: {
-		endpoint: string;
-		token: string;
-		action: "list" | "delete";
-		shareCode?: string;
-	}) => ipcRenderer.invoke("cloud-share-manage", input),
-	cloudShareCancel: (uploadId: string) => ipcRenderer.invoke("cloud-share-cancel", uploadId),
-	onCloudShareProgress: (
-		callback: (progress: {
-			uploadId: string;
-			uploadedBytes: number;
-			totalBytes: number;
-		}) => void,
-	) => {
-		const listener = (
-			_event: Electron.IpcRendererEvent,
-			progress: { uploadId: string; uploadedBytes: number; totalBytes: number },
-		) => callback(progress);
-		ipcRenderer.on("cloud-share-progress", listener);
-		return () => ipcRenderer.removeListener("cloud-share-progress", listener);
 	},
 	openRecordingsFolder: () => {
 		return ipcRenderer.invoke("open-recordings-folder");
@@ -1155,7 +1119,6 @@ contextBridge.exposeInMainWorld("electronAPI", {
 		ipcRenderer.invoke("mux-native-windows-recording", expectedDurationMs),
 	hideOsCursor: () => ipcRenderer.invoke("hide-cursor"),
 	getAppVersion: () => ipcRenderer.invoke("app:getVersion"),
-	getAnnouncements: () => ipcRenderer.invoke("announcements:get"),
 	getRecordingPreferences: () => ipcRenderer.invoke("get-recording-preferences"),
 	getRecordingAudioLabConfig: () => ipcRenderer.invoke("get-recording-audio-lab-config"),
 	setRecordingPreferences: (prefs: {

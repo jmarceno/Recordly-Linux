@@ -1,7 +1,5 @@
 # Recordly Extension API
 
-Go to https://www.marketplace.recordly.dev/extensions for full, regularly updated documentation
-
 Recordly extensions run in the editor renderer and use a permission-gated host API. They can draw into the render pipeline, react to playback and export events, register cursor effects, add settings panels, and contribute packaged assets such as frames, wallpapers, and cursor styles.
 
 ## Quick Start
@@ -56,25 +54,9 @@ export function deactivate() {}
 
 Recordly loads the `main` entry from the manifest, which must be a `.js` file. If you author in TypeScript, compile or bundle to JavaScript before packaging. A `tsconfig.json` with `"module": "ESNext"` and `"target": "ESNext"` works well since extensions run in a Chromium renderer.
 
-### Manifest Screenshots
-
-Extensions can include `screenshots` in the manifest to show preview images in the marketplace:
-
-```json
-{
-  "id": "com.example.my-extension",
-  "screenshots": [
-    "screenshots/preview-1.png",
-    "screenshots/preview-2.png"
-  ]
-}
-```
-
-Paths are relative to the extension root. The marketplace displays screenshots in a carousel on both the in-app detail modal and the web detail page.
-
 ## Manifest
 
-`recordly-extension.json` is validated both when the extension loads and when a zip is uploaded to the marketplace.
+`recordly-extension.json` is validated when the extension loads.
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
@@ -87,7 +69,7 @@ Paths are relative to the extension root. The marketplace displays screenshots i
 | `license` | `string` | No | SPDX license identifier |
 | `engine` | `string` | No | Minimum supported Recordly version |
 | `icon` | `string` | No | Relative path to a PNG icon |
-| `screenshots` | `string[]` | No | Relative paths to preview images shown in the marketplace |
+| `screenshots` | `string[]` | No | Relative paths to preview images |
 | `main` | `string` | Yes | Relative entry point JS file |
 | `permissions` | `string[]` | Yes | Required capabilities |
 | `contributes` | `object` | No | Metadata for packaged frames, cursor styles, sounds, wallpapers, and webcam frames |

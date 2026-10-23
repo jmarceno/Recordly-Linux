@@ -1,6 +1,4 @@
-import type { User } from "@supabase/supabase-js";
-import { AccountSettings } from "@/components/auth/AccountSettings";
-import { RecordingPermissionsSettings } from "@/components/auth/RecordingPermissionsSettings";
+import { RecordingPermissionsSettings } from "@/components/permissions/RecordingPermissionsSettings";
 import { SettingsSections, SettingsCategory } from "./SettingsSections";
 import { Card, RadioGroup, Radio, Label, Description } from "@heroui/react";
 import { ProgressBar } from "@heroui/react";
@@ -422,8 +420,6 @@ function CursorClickEffectCards({
 }
 
 interface SettingsPanelProps {
-	accountUser?: User | null;
-	onShowOnboarding?: () => void;
 	advanced?: boolean;
 	panelMode?: "editor" | "background";
 	activeEffectSection?: EditorEffectSection;
@@ -880,8 +876,6 @@ function CursorStylePreview({
 }
 
 export function SettingsPanel({
-	accountUser = null,
-	onShowOnboarding,
 	advanced = false,
 	panelMode = "editor",
 	activeEffectSection: activeEffectSectionProp,
@@ -2257,25 +2251,14 @@ export function SettingsPanel({
 			<SettingsSections
 				categories={
 					advanced
-						? ["general", "account", "permissions", "motion", "advanced"]
-						: ["general", "account", "permissions", "motion"]
+						? ["general", "permissions", "motion", "advanced"]
+						: ["general", "permissions", "motion"]
 				}
 			>
-				<SettingsCategory category="account">
-					<AccountSettings key={accountUser?.id ?? "signed-out"} user={accountUser} />
-				</SettingsCategory>
 				<SettingsCategory category="permissions">
-					<RecordingPermissionsSettings onReview={onShowOnboarding} />
+					<RecordingPermissionsSettings />
 				</SettingsCategory>
 				<SettingsCategory category="general">
-					{onShowOnboarding && (
-						<SettingsRow title="Onboarding">
-							<Button variant="secondary" size="sm" onClick={onShowOnboarding}>
-								Show onboarding
-							</Button>
-						</SettingsRow>
-					)}
-
 					<SettingsRow title={t("editor.theme.appearance", "Appearance")} stacked>
 						<ChoiceGroup
 							type="single"

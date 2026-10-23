@@ -1,8 +1,7 @@
-import { FeedbackDialog } from "@/components/feedback/FeedbackDialog";
 import { RecordNewButton } from "./RecordNewButton";
 import { SidebarCards } from "./SidebarCards";
 import { FolderRow } from "./FolderRow";
-import { Cloud, File, GearSix, House, Plus, UserCircle } from "@/components/ui/icons";
+import { File, GearSix, House, Plus } from "@/components/ui/icons";
 
 import { Button } from "@/components/ui/button";
 
@@ -21,8 +20,6 @@ export function DashboardSidebar({
 	metadata,
 	update,
 	navClass,
-	onSignIn,
-	accountLabel,
 }: Pick<
 	DashboardProps & DashboardModel,
 	| "busy"
@@ -34,8 +31,6 @@ export function DashboardSidebar({
 	| "metadata"
 	| "update"
 	| "navClass"
-	| "onSignIn"
-	| "accountLabel"
 >) {
 	return (
 		<>
@@ -61,18 +56,6 @@ export function DashboardSidebar({
 					>
 						<House weight="fill" className="size-[18px]" />
 						Home
-					</Button>
-					<Button
-						variant="ghost"
-						className={navClass(section === "shared")}
-						aria-current={section === "shared" ? "page" : undefined}
-						onClick={() => setSection("shared")}
-					>
-						<Cloud
-							weight={section === "shared" ? "fill" : "regular"}
-							className="size-[18px]"
-						/>
-						Shared
 					</Button>
 					<Button
 						variant="ghost"
@@ -136,7 +119,6 @@ export function DashboardSidebar({
 				</div>
 				<div className="space-y-1 pt-6">
 					<SidebarCards />
-					<FeedbackDialog showLabel className={navClass(false)} onSignIn={onSignIn} />
 					<Button
 						variant="ghost"
 						className={navClass(section === "settings")}
@@ -148,10 +130,6 @@ export function DashboardSidebar({
 							className="size-[18px]"
 						/>
 						Settings
-					</Button>
-					<Button variant="ghost" className={navClass(false)} onClick={onSignIn}>
-						<UserCircle weight="fill" className="size-[18px] shrink-0" />
-						<span className="truncate">{accountLabel || "Sign in"}</span>
 					</Button>
 				</div>
 			</aside>

@@ -109,10 +109,6 @@
 	"css": { "parser": { "cssModules": true, "tailwindDirectives": true } },
 	"overrides": [
 		{
-			"includes": ["services/supabase/functions/**/*.ts"],
-			"javascript": { "globals": ["Deno"] }
-		},
-		{
 			"includes": ["*.ts", "*.tsx", "*.mts", "*.cts"],
 			"linter": {
 				"rules": {

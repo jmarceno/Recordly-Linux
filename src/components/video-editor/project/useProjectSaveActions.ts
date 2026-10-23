@@ -1,5 +1,4 @@
 import { moveProjectFolderReferences } from "../dashboard/useProjectFolders";
-import { moveProjectShareLink } from "../cloud/projectShareLinks";
 import { type RefObject, useCallback, useEffect, useLayoutEffect, useRef } from "react";
 import { toast } from "@/components/ui/toast";
 import { createProjectData, type EditorProjectData } from "../projectPersistence";
@@ -248,7 +247,6 @@ export function useProjectSaveActions({
 					) {
 						try {
 							moveProjectFolderReferences(previousPath, result.path);
-							moveProjectShareLink(previousPath, result.path);
 						} catch {
 							toast.error(
 								"Project renamed, but library preferences could not be updated",

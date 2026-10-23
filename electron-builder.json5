@@ -11,12 +11,6 @@
     "electron/native/bin/**"
   ],
   "productName": "Recordly",
-  "protocols": [
-    {
-      "name": "Recordly authentication",
-      "schemes": ["recordly"]
-    }
-  ],
   "npmRebuild": true,
   "buildDependenciesFromSource": true,
   "compression": "normal",
