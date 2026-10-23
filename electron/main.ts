@@ -163,6 +163,7 @@ let mainWindow: BrowserWindow | null = null;
 let sourceSelectorWindow: BrowserWindow | null = null;
 let tray: Tray | null = null;
 let trayContextMenu: Menu | null = null;
+let isRecordingActive = false;
 let selectedSourceName = "";
 let editorHasUnsavedChanges = false;
 let isForceClosing = false;
@@ -328,6 +329,13 @@ function focusOrCreateMainWindow() {
 		void app.whenReady().then(() => {
 			focusOrCreateMainWindow();
 		});
+		return;
+	}
+
+	// On Linux the HUD is hidden for the whole capture. Recreating it (the
+	// Wayland focus workaround below) would destroy the renderer that owns the
+	// active recording, so never touch windows while a capture is running.
+	if (process.platform === "linux" && isRecordingActive) {
 		return;
 	}
 
@@ -500,11 +508,51 @@ function isPrimaryTrayClick(event: unknown) {
 	return button === undefined || button === 0 || button === "left";
 }
 
+function requestStopRecordingFromTray() {
+	// The recording lives in the HUD overlay renderer. `mainWindow` can point at
+	// the editor while a recording is running (for example when the app is open
+	// from the tray), so address the HUD directly instead of relying on it.
+	const hud = getHudOverlayWindow();
+	if (hud && !hud.webContents.isDestroyed()) {
+		hud.webContents.send("stop-recording-from-tray");
+		return true;
+	}
+
+	console.warn("[tray] Could not deliver the stop-recording request to the HUD renderer");
+	return false;
+}
+
+function showOverlayFromTray() {
+	if (showHudOverlayFromTray()) {
+		return;
+	}
+
+	// The HUD is closed once a recording has been finalized, while the editor
+	// can stay open. Recreate the overlay without disturbing the editor.
+	const hud = createHudOverlayWindow();
+	if (!mainWindow || mainWindow.isDestroyed()) {
+		mainWindow = hud;
+	}
+}
+
+function openMainWindowFromTray() {
+	createEditorWindowWrapper();
+}
+
 function createTray() {
 	tray = new Tray(getDefaultTrayIcon());
 	tray.on("click", (event) => {
 		if (process.platform === "win32" && !isPrimaryTrayClick(event)) {
 			return;
+		}
+
+		if (isRecordingActive) {
+			// Stop first. The recording-state callback restores the main window
+			// once the renderer has finished the stop sequence, so the overlay is
+			// never shown while it is still being captured.
+			if (requestStopRecordingFromTray()) {
+				return;
+			}
 		}
 
 		focusOrCreateMainWindow();
@@ -559,43 +607,34 @@ function syncDockIcon() {
 
 function updateTrayMenu(recording: boolean = false) {
 	if (!tray) return;
+	isRecordingActive = recording;
 	const trayIcon = recording ? getRecordingTrayIcon() : getDefaultTrayIcon();
 	const trayToolTip = recording ? `Recording: ${selectedSourceName}` : "Recordly";
-	const menuTemplate = recording
-		? [
-				{
-					label: "Show Controls",
-					click: () => {
-						if (!showHudOverlayFromTray()) {
-							focusOrCreateMainWindow();
-						}
-					},
+	const menuTemplate: Electron.MenuItemConstructorOptions[] = [
+		{
+			label: "Show Overlay",
+			click: () => {
+				showOverlayFromTray();
+			},
+		},
+		{
+			label: "Open Recordly",
+			click: () => {
+				openMainWindowFromTray();
+			},
+		},
+	];
+	if (!recording) {
+		menuTemplate.push(
+			{ type: "separator" },
+			{
+				label: "Quit",
+				click: () => {
+					app.quit();
 				},
-				{
-					label: "Stop Recording",
-					click: () => {
-						if (mainWindow && !mainWindow.isDestroyed()) {
-							mainWindow.webContents.send("stop-recording-from-tray");
-						}
-					},
-				},
-			]
-		: [
-				{
-					label: "Open",
-					click: () => {
-						if (!showHudOverlayFromTray()) {
-							focusOrCreateMainWindow();
-						}
-					},
-				},
-				{
-					label: "Quit",
-					click: () => {
-						app.quit();
-					},
-				},
-			];
+			},
+		);
+	}
 	const menu = Menu.buildFromTemplate(menuTemplate);
 	trayContextMenu = menu;
 	tray.setImage(trayIcon);
@@ -860,6 +899,7 @@ app.whenReady().then(async () => {
 		() => sourceSelectorWindow,
 		(recording: boolean, sourceName: string) => {
 			selectedSourceName = sourceName;
+			isRecordingActive = recording;
 			setHudOverlayRecordingActive(recording);
 			if (shouldUseTray()) {
 				if (!tray) createTray();

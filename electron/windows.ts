@@ -191,7 +191,7 @@ export function beginHudCaptureProtection(): void {
 
 // Wayland compositors give no way to keep a window out of a screen capture, so
 // on Linux the HUD is hidden for the whole recording and comes back on stop.
-// The tray menu stays available to stop the recording or show the controls.
+// The tray menu stays available to show the overlay and open the app.
 let hudHiddenForCapture = false;
 
 export async function hideHudForCapture(): Promise<void> {
@@ -426,7 +426,7 @@ ipcMain.on("hud-overlay-drag", (_event, phase: string, screenX: number, screenY:
 
 ipcMain.on("hud-overlay-hide", () => {
 	if (hudOverlayWindow && !hudOverlayWindow.isDestroyed()) {
-		// The tray "Open" entry brings it back on Linux.
+		// The tray "Show Overlay" entry brings it back on Linux.
 		if (process.platform === "linux") {
 			hudOverlayWindow.hide();
 			return;
