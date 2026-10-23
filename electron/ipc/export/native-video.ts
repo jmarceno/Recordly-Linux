@@ -28,8 +28,8 @@ import type {
 import {
 	buildEditedTrackSourceAudioFilter,
 	buildNativeConcatArgs,
-	buildNativeCudaOverlayStaticLayoutArgs,
-	buildNativeCudaScaleCpuPadStaticLayoutArgs,
+	buildNativeStaticLayoutOverlayArgs,
+	buildNativeStaticLayoutPadArgs,
 	buildNativePrecompositedStaticLayoutArgs,
 	buildNativeStaticBackgroundRenderArgs,
 	buildNativeStaticLayoutChunks,
@@ -39,7 +39,7 @@ import {
 	getEditedAudioExtension,
 	getNativeVideoInputByteSize,
 	getPreferredNativeVideoEncoders,
-	isNativeCudaOutOfMemory,
+	isNativeFfmpegMemoryError,
 	parseAvailableFfmpegEncoders,
 } from "../nativeVideoExport";
 import { cachedNativeVideoEncoder, setCachedNativeVideoEncoder } from "../state";
@@ -2451,29 +2451,29 @@ export async function exportNativeStaticLayoutVideo(
 				index: 0,
 				startSec: 0,
 				durationSec: options.durationSec,
-				backend: "cuda-static-composite",
+				backend: "ffmpeg-precomposite",
 				elapsedMs: fullResult.elapsedMs,
 				outputBytes: outputStat.size,
 			});
 		} else if (!didRenderVideo) {
 			const primaryResult = await runFfmpegWithMetrics(
 				ffmpegPath,
-				buildNativeCudaOverlayStaticLayoutArgs(fullConfig),
+				buildNativeStaticLayoutOverlayArgs(fullConfig),
 				15 * 60 * 1000,
 				session,
 			);
 			let fullResult = primaryResult;
-			let fullBackend: NativeStaticLayoutBackend = "cuda-overlay";
+			let fullBackend: NativeStaticLayoutBackend = "ffmpeg-overlay";
 			let fallbackReason: string | undefined;
 			if (!primaryResult.success) {
-				fullBackend = "cuda-scale-cpu-pad";
-				fallbackReason = isNativeCudaOutOfMemory(primaryResult.stderr)
-					? "cuda-oom"
-					: "cuda-overlay-failed";
+				fullBackend = "ffmpeg-pad";
+				fallbackReason = isNativeFfmpegMemoryError(primaryResult.stderr)
+					? "ffmpeg-oom"
+					: "overlay-failed";
 				metrics.fallbackChunkCount++;
 				fullResult = await runFfmpegWithMetrics(
 					ffmpegPath,
-					buildNativeCudaScaleCpuPadStaticLayoutArgs(fullConfig),
+					buildNativeStaticLayoutPadArgs(fullConfig),
 					15 * 60 * 1000,
 					session,
 				);
@@ -2496,7 +2496,7 @@ export async function exportNativeStaticLayoutVideo(
 					outputBytes: outputStat.size,
 					fallbackReason,
 				});
-			} else if (isNativeCudaOutOfMemory(fullResult.stderr)) {
+			} else if (isNativeFfmpegMemoryError(fullResult.stderr)) {
 				const concatLines: string[] = [];
 
 				for (const chunk of chunks) {
@@ -2523,21 +2523,21 @@ export async function exportNativeStaticLayoutVideo(
 					};
 					const primary = await runFfmpegWithMetrics(
 						ffmpegPath,
-						buildNativeCudaOverlayStaticLayoutArgs(baseConfig),
+						buildNativeStaticLayoutOverlayArgs(baseConfig),
 						15 * 60 * 1000,
 						session,
 					);
-					let backend: NativeStaticLayoutBackend = "cuda-overlay";
+					let backend: NativeStaticLayoutBackend = "ffmpeg-overlay";
 					let result = primary;
 					let fallbackReason: string | undefined;
 
-					if (!primary.success && isNativeCudaOutOfMemory(primary.stderr)) {
-						backend = "cuda-scale-cpu-pad";
-						fallbackReason = "cuda-oom";
+					if (!primary.success && isNativeFfmpegMemoryError(primary.stderr)) {
+						backend = "ffmpeg-pad";
+						fallbackReason = "ffmpeg-oom";
 						metrics.fallbackChunkCount++;
 						result = await runFfmpegWithMetrics(
 							ffmpegPath,
-							buildNativeCudaScaleCpuPadStaticLayoutArgs(baseConfig),
+							buildNativeStaticLayoutPadArgs(baseConfig),
 							15 * 60 * 1000,
 							session,
 						);

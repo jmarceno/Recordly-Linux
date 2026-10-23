@@ -73,9 +73,9 @@ export interface NativeVideoAudioMuxMetrics {
 }
 
 export type NativeStaticLayoutBackend =
-	| "cuda-overlay"
-	| "cuda-scale-cpu-pad"
-	| "cuda-static-composite"
+	| "ffmpeg-overlay"
+	| "ffmpeg-pad"
+	| "ffmpeg-precomposite"
 	| "windows-d3d11-compositor";
 
 export interface NativeStaticLayoutExportArgsConfig {
@@ -168,27 +168,6 @@ function getBitrateArgs(bitrate: number): string[] {
 	];
 }
 
-function getNvencStaticLayoutModeArgs(encodingMode: NativeExportEncodingMode): string[] {
-	const lowLatencyRateControlArgs = [
-		"-rc",
-		"vbr",
-		"-multipass",
-		"disabled",
-		"-rc-lookahead",
-		"0",
-		"-surfaces",
-		"32",
-	];
-	switch (encodingMode) {
-		case "quality":
-			return ["-preset", "p1", "-tune", "hq", ...lowLatencyRateControlArgs];
-		case "balanced":
-			return ["-preset", "p1", "-tune", "ll", ...lowLatencyRateControlArgs];
-		case "fast":
-		default:
-			return ["-preset", "p1", "-tune", "ull", ...lowLatencyRateControlArgs];
-	}
-}
 
 function formatFfmpegColor(value: string): string {
 	const trimmed = value.trim();
@@ -334,7 +313,7 @@ export function buildNativeVideoExportArgs(
 	return args;
 }
 
-export function buildNativeCudaOverlayStaticLayoutArgs(
+export function buildNativeStaticLayoutOverlayArgs(
 	config: NativeStaticLayoutExportArgsConfig,
 ): string[] {
 	const backgroundColor = formatFfmpegColor(config.backgroundColor);
@@ -342,23 +321,21 @@ export function buildNativeCudaOverlayStaticLayoutArgs(
 	const args = ["-y", "-hide_banner", "-loglevel", "error"];
 	pushFfmpegTimeSliceArgs(args, config.startSec, config.durationSec);
 	args.push(
-		"-hwaccel",
-		"cuda",
-		"-hwaccel_output_format",
-		"cuda",
 		"-i",
 		config.inputPath,
 		"-filter_complex",
-		`color=c=${backgroundColor}:s=${config.width}x${config.height}:r=${config.frameRate}:d=${durationSec},format=nv12,setrange=limited,hwupload_cuda[bg];[0:v]scale_cuda=w=${config.contentWidth}:h=${config.contentHeight}:format=nv12:passthrough=0,hwdownload,format=nv12,${FFMPEG_AUTO_TO_VIDEO_RANGE_FILTER},fps=${config.frameRate},hwupload_cuda[fg];[bg][fg]overlay_cuda=${config.offsetX}:${config.offsetY}:shortest=0:repeatlast=1:eof_action=repeat,trim=duration=${durationSec},setpts=PTS-STARTPTS[out]`,
+		`color=c=${backgroundColor}:s=${config.width}x${config.height}:r=${config.frameRate}:d=${durationSec},format=yuv420p[bg];[0:v]scale=w=${config.contentWidth}:h=${config.contentHeight}:flags=bicubic,${FFMPEG_AUTO_TO_VIDEO_RANGE_FILTER},fps=${config.frameRate},format=yuv420p[fg];[bg][fg]overlay=x=${config.offsetX}:y=${config.offsetY}:shortest=0:repeatlast=1:eof_action=repeat,trim=duration=${durationSec},setpts=PTS-STARTPTS,format=yuv420p[out]`,
 		"-map",
 		"[out]",
 		"-an",
 		"-r",
 		String(config.frameRate),
 		"-c:v",
-		"h264_nvenc",
-		...getNvencStaticLayoutModeArgs(config.encodingMode),
+		"libx264",
+		...getLibx264ModeArgs(config.encodingMode),
 		...getBitrateArgs(config.bitrate),
+		"-pix_fmt",
+		"yuv420p",
 		...FFMPEG_BT709_VIDEO_COLOR_ARGS,
 		"-movflags",
 		"+faststart",
@@ -367,29 +344,25 @@ export function buildNativeCudaOverlayStaticLayoutArgs(
 	return args;
 }
 
-export function buildNativeCudaScaleCpuPadStaticLayoutArgs(
+export function buildNativeStaticLayoutPadArgs(
 	config: NativeStaticLayoutExportArgsConfig,
 ): string[] {
 	const backgroundColor = formatFfmpegColor(config.backgroundColor);
 	const args = ["-y", "-hide_banner", "-loglevel", "error"];
 	pushFfmpegTimeSliceArgs(args, config.startSec, config.durationSec);
 	args.push(
-		"-hwaccel",
-		"cuda",
-		"-hwaccel_output_format",
-		"cuda",
 		"-i",
 		config.inputPath,
 		"-vf",
-		`scale_cuda=w=${config.contentWidth}:h=${config.contentHeight}:format=nv12:passthrough=0,hwdownload,format=nv12,${FFMPEG_AUTO_TO_VIDEO_RANGE_FILTER},fps=${config.frameRate},pad=w=${config.width}:h=${config.height}:x=${config.offsetX}:y=${config.offsetY}:color=${backgroundColor}`,
+		`scale=w=${config.contentWidth}:h=${config.contentHeight}:flags=bicubic,${FFMPEG_AUTO_TO_VIDEO_RANGE_FILTER},fps=${config.frameRate},pad=w=${config.width}:h=${config.height}:x=${config.offsetX}:y=${config.offsetY}:color=${backgroundColor}`,
 		"-map",
 		"0:v:0",
 		"-an",
 		"-r",
 		String(config.frameRate),
 		"-c:v",
-		"h264_nvenc",
-		...getNvencStaticLayoutModeArgs(config.encodingMode),
+		"libx264",
+		...getLibx264ModeArgs(config.encodingMode),
 		...getBitrateArgs(config.bitrate),
 		"-pix_fmt",
 		"yuv420p",
@@ -508,10 +481,6 @@ export function buildNativePrecompositedStaticLayoutArgs(
 	const args = ["-y", "-hide_banner", "-loglevel", "error"];
 	pushFfmpegTimeSliceArgs(args, config.startSec, config.durationSec);
 	args.push(
-		"-hwaccel",
-		"cuda",
-		"-hwaccel_output_format",
-		"cuda",
 		"-i",
 		config.inputPath,
 		"-loop",
@@ -537,7 +506,7 @@ export function buildNativePrecompositedStaticLayoutArgs(
 		);
 	}
 
-	const foregroundFilter = `[0:v]scale_cuda=w=${config.contentWidth}:h=${config.contentHeight}:format=nv12:passthrough=0,hwdownload,format=nv12,${FFMPEG_AUTO_TO_FULL_RANGE_FILTER},fps=${config.frameRate},format=rgba[fgbase]`;
+	const foregroundFilter = `[0:v]scale=w=${config.contentWidth}:h=${config.contentHeight}:flags=bicubic,${FFMPEG_AUTO_TO_FULL_RANGE_FILTER},fps=${config.frameRate},format=rgba[fgbase]`;
 	const maskFilter = useMask ? ";[2:v]format=gray[mask];[fgbase][mask]alphamerge[fg]" : "";
 	const foregroundLabel = useMask ? "fg" : "fgbase";
 	const filterComplex = `${foregroundFilter}${maskFilter};[1:v]format=rgba[bg];[bg][${foregroundLabel}]overlay=x=${config.offsetX}:y=${config.offsetY}:format=auto,trim=duration=${durationSec},setpts=PTS-STARTPTS,${FFMPEG_FULL_TO_VIDEO_RANGE_FILTER},format=yuv420p[out]`;
@@ -551,8 +520,8 @@ export function buildNativePrecompositedStaticLayoutArgs(
 		"-r",
 		String(config.frameRate),
 		"-c:v",
-		"h264_nvenc",
-		...getNvencStaticLayoutModeArgs(config.encodingMode),
+		"libx264",
+		...getLibx264ModeArgs(config.encodingMode),
 		...getBitrateArgs(config.bitrate),
 		"-pix_fmt",
 		"yuv420p",
@@ -609,8 +578,10 @@ export function buildNativeStaticLayoutChunks(
 	return chunks;
 }
 
-export function isNativeCudaOutOfMemory(stderr: string): boolean {
-	return /CUDA_ERROR_OUT_OF_MEMORY|cuMemAlloc.+out of memory/i.test(stderr);
+export function isNativeFfmpegMemoryError(stderr: string): boolean {
+	return /cannot allocate memory|out of memory|not enough memory|ENOMEM|unable to allocate/i.test(
+		stderr,
+	);
 }
 
 function formatFfmpegSeconds(milliseconds: number): string {

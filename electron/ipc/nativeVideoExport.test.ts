@@ -3,8 +3,8 @@ import { ATEMPO_FILTER_EPSILON } from "./ffmpeg/filters";
 import {
 	buildEditedTrackSourceAudioFilter,
 	buildNativeConcatArgs,
-	buildNativeCudaOverlayStaticLayoutArgs,
-	buildNativeCudaScaleCpuPadStaticLayoutArgs,
+	buildNativeStaticLayoutOverlayArgs,
+	buildNativeStaticLayoutPadArgs,
 	buildNativePrecompositedStaticLayoutArgs,
 	buildNativeStaticBackgroundRenderArgs,
 	buildNativeStaticLayoutChunks,
@@ -12,7 +12,7 @@ import {
 	buildTrimmedSourceAudioFilter,
 	createNativeSquircleMaskPgmBuffer,
 	FFMPEG_BT709_VIDEO_COLOR_ARGS,
-	isNativeCudaOutOfMemory,
+	isNativeFfmpegMemoryError,
 } from "./nativeVideoExport";
 
 describe("buildTrimmedSourceAudioFilter", () => {
@@ -147,18 +147,20 @@ describe("native static layout command builders", () => {
 		durationSec: 60,
 	};
 
-	it("builds the primary CUDA overlay layout command", () => {
-		const args = buildNativeCudaOverlayStaticLayoutArgs(baseConfig);
+	it("builds the primary software overlay layout command", () => {
+		const args = buildNativeStaticLayoutOverlayArgs(baseConfig);
 
 		expect(args).toContain("-filter_complex");
 		expect(args).toContain(
-			"color=c=0x101010:s=1920x1080:r=60:d=60.000,format=nv12,setrange=limited,hwupload_cuda[bg];" +
-				"[0:v]scale_cuda=w=1536:h=864:format=nv12:passthrough=0,hwdownload,format=nv12,scale=in_range=auto:out_range=tv:sws_dither=bayer,fps=60,hwupload_cuda[fg];" +
-				"[bg][fg]overlay_cuda=192:108:shortest=0:repeatlast=1:eof_action=repeat,trim=duration=60.000,setpts=PTS-STARTPTS[out]",
+			"color=c=0x101010:s=1920x1080:r=60:d=60.000,format=yuv420p[bg];" +
+				"[0:v]scale=w=1536:h=864:flags=bicubic,scale=in_range=auto:out_range=tv:sws_dither=bayer,fps=60,format=yuv420p[fg];" +
+				"[bg][fg]overlay=x=192:y=108:shortest=0:repeatlast=1:eof_action=repeat,trim=duration=60.000,setpts=PTS-STARTPTS,format=yuv420p[out]",
 		);
-		expect(args).toContain("h264_nvenc");
-		expect(args).toContain("p1");
-		expect(args).not.toContain("yuv420p");
+		expect(args).toContain("libx264");
+		expect(args).toContain("ultrafast");
+		expect(args).not.toContain("h264_nvenc");
+		expect(args).not.toContain("cuda");
+		expect(args).toEqual(expect.arrayContaining(["-pix_fmt", "yuv420p"]));
 		expect(args).toEqual(expect.arrayContaining(["-ss", "120.000", "-t", "60.000"]));
 		expect(args).toEqual(expect.arrayContaining([...FFMPEG_BT709_VIDEO_COLOR_ARGS]));
 	});
@@ -192,29 +194,31 @@ describe("native static layout command builders", () => {
 		);
 	});
 
-	it("builds the stable CUDA scale plus CPU pad fallback command", () => {
-		const args = buildNativeCudaScaleCpuPadStaticLayoutArgs(baseConfig);
+	it("builds the software scale plus pad fallback command", () => {
+		const args = buildNativeStaticLayoutPadArgs(baseConfig);
 
 		expect(args).toEqual(
 			expect.arrayContaining([
 				"-vf",
-				"scale_cuda=w=1536:h=864:format=nv12:passthrough=0,hwdownload,format=nv12,scale=in_range=auto:out_range=tv:sws_dither=bayer,fps=60,pad=w=1920:h=1080:x=192:y=108:color=0x101010",
+				"scale=w=1536:h=864:flags=bicubic,scale=in_range=auto:out_range=tv:sws_dither=bayer,fps=60,pad=w=1920:h=1080:x=192:y=108:color=0x101010",
 				"-map",
 				"0:v:0",
 				"-an",
 			]),
 		);
+		expect(args).toContain("libx264");
+		expect(args).not.toContain("cuda");
 		expect(args).toEqual(expect.arrayContaining([...FFMPEG_BT709_VIDEO_COLOR_ARGS]));
 	});
 
 	it("sanitizes unsupported background colors to the safe dark fallback", () => {
-		const args = buildNativeCudaScaleCpuPadStaticLayoutArgs({
+		const args = buildNativeStaticLayoutPadArgs({
 			...baseConfig,
 			backgroundColor: "linear-gradient(red, blue)",
 		});
 
 		expect(args).toContain(
-			"scale_cuda=w=1536:h=864:format=nv12:passthrough=0,hwdownload,format=nv12,scale=in_range=auto:out_range=tv:sws_dither=bayer,fps=60,pad=w=1920:h=1080:x=192:y=108:color=0x101010",
+			"scale=w=1536:h=864:flags=bicubic,scale=in_range=auto:out_range=tv:sws_dither=bayer,fps=60,pad=w=1920:h=1080:x=192:y=108:color=0x101010",
 		);
 	});
 
@@ -262,14 +266,15 @@ describe("native static layout command builders", () => {
 
 		expect(args).toEqual(expect.arrayContaining(["-i", "background.png", "-i", "mask.pgm"]));
 		expect(filterComplex).toContain(
-			"scale_cuda=w=1536:h=864:format=nv12:passthrough=0,hwdownload,format=nv12,scale=in_range=auto:out_range=full,fps=60,format=rgba",
+			"scale=w=1536:h=864:flags=bicubic,scale=in_range=auto:out_range=full,fps=60,format=rgba",
 		);
 		expect(filterComplex).toContain("[fgbase][mask]alphamerge[fg]");
 		expect(filterComplex).toContain("overlay=x=192:y=108:format=auto");
 		expect(filterComplex).toContain(
 			"scale=in_range=full:out_range=tv:sws_dither=bayer,format=yuv420p[out]",
 		);
-		expect(args).toContain("h264_nvenc");
+		expect(args).toContain("libx264");
+		expect(args).not.toContain("cuda");
 		expect(args).toEqual(expect.arrayContaining(["-pix_fmt", "yuv420p"]));
 		expect(args).toEqual(expect.arrayContaining([...FFMPEG_BT709_VIDEO_COLOR_ARGS]));
 	});
@@ -314,12 +319,9 @@ describe("native static layout command builders", () => {
 		]);
 	});
 
-	it("detects CUDA OOM as a retryable fast-path failure", () => {
-		expect(
-			isNativeCudaOutOfMemory(
-				"cu->cuMemAlloc(&data, size) failed -> CUDA_ERROR_OUT_OF_MEMORY: out of memory",
-			),
-		).toBe(true);
-		expect(isNativeCudaOutOfMemory("FFmpeg exited with code 1")).toBe(false);
+	it("detects ffmpeg memory exhaustion as a retryable failure", () => {
+		expect(isNativeFfmpegMemoryError("Error: Cannot allocate memory")).toBe(true);
+		expect(isNativeFfmpegMemoryError("av_malloc(): out of memory")).toBe(true);
+		expect(isNativeFfmpegMemoryError("FFmpeg exited with code 1")).toBe(false);
 	});
 });

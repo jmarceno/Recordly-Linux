@@ -99,9 +99,9 @@ interface RendererNativeStaticLayoutChunkMetric {
 	startSec: number;
 	durationSec: number;
 	backend:
-		| "cuda-overlay"
-		| "cuda-scale-cpu-pad"
-		| "cuda-static-composite"
+		| "ffmpeg-overlay"
+		| "ffmpeg-pad"
+		| "ffmpeg-precomposite"
 		| "windows-d3d11-compositor";
 	elapsedMs: number;
 	outputBytes: number;
