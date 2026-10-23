@@ -37,7 +37,22 @@ interface MeetingJob {
 	finishedAt: string | null;
 }
 
+interface MeetingLibraryEntry {
+	mediaPath: string;
+	title: string;
+	createdAt: number;
+	durationMs: number | null;
+	hasVideo: boolean;
+	hasTranscript: boolean;
+	hasNotes: boolean;
+	status: "idle" | "queued" | "running" | "failed" | "interrupted";
+	error: string | null;
+}
+
 interface MeetingMeta {
+	kind?: "meeting";
+	createdAt?: string;
+	hasVideo?: boolean;
 	language?: string | null;
 	durationMs?: number | null;
 	title?: string;
@@ -295,6 +310,7 @@ interface Window {
 				capturesMicrophone?: boolean;
 				microphoneDeviceId?: string;
 				microphoneLabel?: string;
+				keepSpeakerTracks?: boolean;
 			},
 		) => Promise<{
 			success: boolean;
@@ -765,6 +781,29 @@ interface Window {
 			error?: string;
 		}>;
 		meetingGetSettings: () => Promise<MeetingSettingsView>;
+		meetingList: () => Promise<{
+			success: boolean;
+			meetings?: MeetingLibraryEntry[];
+			error?: string;
+		}>;
+		meetingMediaUrl: (
+			mediaPath: string,
+		) => Promise<{ success: boolean; url?: string; error?: string }>;
+		meetingImport: () => Promise<{
+			success: boolean;
+			canceled?: boolean;
+			mediaPath?: string;
+			error?: string;
+		}>;
+		meetingRename: (request: {
+			mediaPath: string;
+			title: string;
+		}) => Promise<{ success: boolean; title?: string; error?: string }>;
+		meetingDelete: (mediaPaths: string[]) => Promise<{ success: boolean; deleted: string[] }>;
+		meetingReveal: (mediaPath: string) => Promise<{ success: boolean; error?: string }>;
+		meetingRequestOpen: (mediaPath: string) => Promise<void>;
+		meetingTakeOpenRequest: () => Promise<string | null>;
+		onMeetingOpenRequested: (callback: () => void) => () => void;
 		meetingSetSettings: (
 			patch: Partial<MeetingSettingsView> & { apiKey?: string | null },
 		) => Promise<{ success: boolean; settings?: MeetingSettingsView; error?: string }>;

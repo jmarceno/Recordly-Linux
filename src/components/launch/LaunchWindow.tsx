@@ -7,6 +7,7 @@ import {
 	MinusIcon,
 	MonitorIcon,
 	TimerIcon,
+	UsersGroup,
 	VideoCameraIcon,
 	VideoCameraSlashIcon,
 	XIcon,
@@ -77,7 +78,13 @@ function LaunchWindowContent() {
 		countdownDelay,
 		setCountdownDelay,
 		preparePermissions,
+		meetingMode,
+		setMeetingMode,
+		recordScreen,
+		setRecordScreen,
 	} = useScreenRecorder();
+	/** A meeting without the screen records audio only: no source, no webcam. */
+	const audioOnly = meetingMode && !recordScreen;
 
 	const { elapsed, formatTime } = useRecordingTimer(recording, paused);
 	const hudContentRef = useRef<HTMLDivElement>(null);
@@ -271,26 +278,77 @@ function LaunchWindowContent() {
 		/>
 	);
 
-	const idleControls = (
+	const meetingControls = (
 		<>
 			<Button
 				variant="ghost"
-				size="lg"
-				className={`${styles.electronNoDrag} group gap-2 px-3 min-w-0 max-w-[180px] shrink-0`}
-				title={selectedSource}
-				aria-label="Choose recording source"
-				disabled={isPickerPending || !sourceReady || recording || finalizing}
-				onClick={() => void handlePickOnScreen()}
+				size="icon"
+				iconSize="lg"
+				aria-pressed={meetingMode}
+				title={
+					meetingMode
+						? "Meeting mode on: transcribe and write notes after you stop"
+						: "Meeting mode: transcribe and write notes after you stop"
+				}
+				className={meetingMode ? "text-accent" : ""}
+				disabled={recording || finalizing}
+				onClick={() => setMeetingMode(!meetingMode)}
 			>
-				<MonitorIcon size={18} className="size-5 shrink-0" />
-				<div className="flex-1 min-w-0 overflow-hidden">
-					{hasSelectedSource ? (
-						<MarqueeText text={selectedSource} />
-					) : (
-						<span>Pick screen</span>
-					)}
-				</div>
+				<UsersGroup weight={meetingMode ? "fill" : "regular"} className="size-5" />
 			</Button>
+			{meetingMode && (
+				<Button
+					variant="ghost"
+					size="icon"
+					iconSize="lg"
+					aria-pressed={recordScreen}
+					title={
+						recordScreen
+							? "Recording the screen too"
+							: "Audio only (screen not recorded)"
+					}
+					className={recordScreen ? "text-accent" : ""}
+					disabled={recording || finalizing}
+					onClick={() => setRecordScreen(!recordScreen)}
+				>
+					<MonitorIcon weight={recordScreen ? "fill" : "regular"} className="size-5" />
+				</Button>
+			)}
+			<Separator orientation="vertical" className="mx-[5px] h-6 self-center" />
+		</>
+	);
+
+	const idleControls = (
+		<>
+			{meetingControls}
+			{audioOnly ? (
+				<div
+					className={`${styles.electronNoDrag} flex items-center gap-2 px-3 text-sm text-muted-foreground shrink-0`}
+					title="The screen is not recorded in this meeting"
+				>
+					<UsersGroup size={18} className="size-5 shrink-0" />
+					<span>Audio only</span>
+				</div>
+			) : (
+				<Button
+					variant="ghost"
+					size="lg"
+					className={`${styles.electronNoDrag} group gap-2 px-3 min-w-0 max-w-[180px] shrink-0`}
+					title={selectedSource}
+					aria-label="Choose recording source"
+					disabled={isPickerPending || !sourceReady || recording || finalizing}
+					onClick={() => void handlePickOnScreen()}
+				>
+					<MonitorIcon size={18} className="size-5 shrink-0" />
+					<div className="flex-1 min-w-0 overflow-hidden">
+						{hasSelectedSource ? (
+							<MarqueeText text={selectedSource} />
+						) : (
+							<span>Pick screen</span>
+						)}
+					</div>
+				</Button>
+			)}
 			<Separator orientation="vertical" className="mx-[5px] h-6 self-center" />
 
 			<MicPopover
@@ -332,49 +390,53 @@ function LaunchWindowContent() {
 				}
 			/>
 
-			<WebcamPopover
-				disabled={recording}
-				webcamEnabled={webcamEnabled}
-				onDisableWebcam={() => setWebcamEnabled(false)}
-				canToggleFloatingPreview={canToggleFloatingWebcamPreview(
-					hudOverlayMousePassthroughSupported,
-				)}
-				showFloatingWebcamPreview={showFloatingWebcamPreview}
-				onToggleFloatingPreview={() => setShowFloatingWebcamPreview((current) => !current)}
-				showWebcamControls={showWebcamControls}
-				setWebcamPreviewNode={setWebcamPreviewNode}
-				videoDevices={videoDevices}
-				webcamDeviceId={webcamDeviceId}
-				selectedVideoDeviceId={selectedVideoDeviceId}
-				onSelectVideoDevice={(deviceId) => {
-					setWebcamEnabled(true);
-					setSelectedVideoDeviceId(deviceId);
-					setWebcamDeviceId(deviceId);
-				}}
-				trigger={
-					<Button
-						variant="ghost"
-						size="icon"
-						iconSize="lg"
-						title={
-							webcamEnabled
-								? t("recording.disableWebcam")
-								: t("recording.enableWebcam")
-						}
-						className={webcamEnabled ? "text-accent" : ""}
-					>
-						{webcamEnabled ? (
-							<VideoCameraIcon
-								weight={webcamEnabled ? "fill" : "regular"}
-								className="size-5"
-								size={18}
-							/>
-						) : (
-							<VideoCameraSlashIcon className="size-5" />
-						)}
-					</Button>
-				}
-			/>
+			{!audioOnly && (
+				<WebcamPopover
+					disabled={recording}
+					webcamEnabled={webcamEnabled}
+					onDisableWebcam={() => setWebcamEnabled(false)}
+					canToggleFloatingPreview={canToggleFloatingWebcamPreview(
+						hudOverlayMousePassthroughSupported,
+					)}
+					showFloatingWebcamPreview={showFloatingWebcamPreview}
+					onToggleFloatingPreview={() =>
+						setShowFloatingWebcamPreview((current) => !current)
+					}
+					showWebcamControls={showWebcamControls}
+					setWebcamPreviewNode={setWebcamPreviewNode}
+					videoDevices={videoDevices}
+					webcamDeviceId={webcamDeviceId}
+					selectedVideoDeviceId={selectedVideoDeviceId}
+					onSelectVideoDevice={(deviceId) => {
+						setWebcamEnabled(true);
+						setSelectedVideoDeviceId(deviceId);
+						setWebcamDeviceId(deviceId);
+					}}
+					trigger={
+						<Button
+							variant="ghost"
+							size="icon"
+							iconSize="lg"
+							title={
+								webcamEnabled
+									? t("recording.disableWebcam")
+									: t("recording.enableWebcam")
+							}
+							className={webcamEnabled ? "text-accent" : ""}
+						>
+							{webcamEnabled ? (
+								<VideoCameraIcon
+									weight={webcamEnabled ? "fill" : "regular"}
+									className="size-5"
+									size={18}
+								/>
+							) : (
+								<VideoCameraSlashIcon className="size-5" />
+							)}
+						</Button>
+					}
+				/>
+			)}
 
 			<CountdownPopover
 				countdownDelay={countdownDelay}
@@ -400,7 +462,11 @@ function LaunchWindowContent() {
 				variant="destructive"
 				size="icon"
 				className={styles.electronNoDrag}
-				onClick={hasSelectedSource ? toggleRecording : () => void handlePickOnScreen()}
+				onClick={
+					audioOnly || hasSelectedSource
+						? toggleRecording
+						: () => void handlePickOnScreen()
+				}
 				disabled={countdownActive || isPickerPending || !sourceReady}
 				title={t("recording.record")}
 			>

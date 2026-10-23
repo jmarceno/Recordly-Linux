@@ -2,6 +2,12 @@ import { fixWebmDuration } from "@fix-webm-duration/fix";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "@/components/ui/toast";
 import { getEffectiveRecordingDurationMs } from "@/lib/mediaTiming";
+import {
+	type MeetingHudPrefs,
+	openMeetingInEditor,
+	readMeetingHudPrefs,
+	writeMeetingHudPrefs,
+} from "@/lib/meetingNavigation";
 import { acquireBrowserScreenCapture, isCapturePermissionDismissed } from "./browserScreenCapture";
 import {
 	getVideoExtensionForMimeType,
@@ -143,6 +149,10 @@ type UseScreenRecorderReturn = {
 	setWebcamDeviceId: (deviceId: string | undefined) => void;
 	countdownDelay: number;
 	setCountdownDelay: (delay: number) => void;
+	meetingMode: boolean;
+	setMeetingMode: (enabled: boolean) => void;
+	recordScreen: boolean;
+	setRecordScreen: (enabled: boolean) => void;
 };
 
 function getErrorMessage(error: unknown) {
@@ -385,6 +395,26 @@ export function useScreenRecorder(): UseScreenRecorderReturn {
 	const [webcamEnabled, setWebcamEnabled] = useState(false);
 	const [webcamDeviceId, setWebcamDeviceId] = useState<string | undefined>(undefined);
 	const [countdownDelay, setCountdownDelayState] = useState(3);
+	const [meetingPrefs, setMeetingPrefs] = useState(readMeetingHudPrefs);
+	const updateMeetingPrefs = useCallback((patch: Partial<MeetingHudPrefs>) => {
+		setMeetingPrefs((current) => {
+			const next = { ...current, ...patch };
+			writeMeetingHudPrefs(next);
+			return next;
+		});
+	}, []);
+	const setMeetingMode = useCallback(
+		(meetingMode: boolean) => updateMeetingPrefs({ meetingMode }),
+		[updateMeetingPrefs],
+	);
+	const setRecordScreen = useCallback(
+		(recordScreen: boolean) => updateMeetingPrefs({ recordScreen }),
+		[updateMeetingPrefs],
+	);
+	const { meetingMode, recordScreen } = meetingPrefs;
+	const audioOnlyMeeting = meetingMode && !recordScreen;
+	/** The active recording is an audio-only meeting (no editor afterwards). */
+	const audioOnlyRecording = useRef(false);
 	const mediaRecorder = useRef<MediaRecorder | null>(null);
 	const webcamRecorder = useRef<MediaRecorder | null>(null);
 	const stream = useRef<MediaStream | null>(null);
@@ -1326,6 +1356,14 @@ export function useScreenRecorder(): UseScreenRecorderReturn {
 
 				const finalPath = result.path;
 
+				if (audioOnlyRecording.current) {
+					// Audio-only meetings open in the meeting view, not the video editor.
+					audioOnlyRecording.current = false;
+					setFinalizing(false);
+					void openMeetingInEditor(finalPath);
+					return;
+				}
+
 				// 1. Finalize the session and switch to editor immediately (Optimistic UI)
 				// We pass null for webcamPath initially to avoid blocking on webcam disk writes/muxing.
 				await finalizeRecordingSession(finalPath, null);
@@ -1654,6 +1692,58 @@ export function useScreenRecorder(): UseScreenRecorderReturn {
 		setRecording,
 	]);
 
+	/** Meeting without the screen: only parec audio, no source, no webcam. */
+	const startAudioOnlyMeeting = async (startWasCancelled: () => boolean) => {
+		if (!microphoneEnabled && !systemAudioEnabled) {
+			toast.error("Turn on the microphone or system audio to record a meeting.");
+			return;
+		}
+		if (!(await preparePermissions()) || startWasCancelled()) return;
+		if (countdownDelay > 0) {
+			setCountdownActive(true);
+			try {
+				const result = await window.electronAPI.startCountdown(countdownDelay);
+				if (!result.success || result.cancelled || startWasCancelled()) return;
+			} finally {
+				setCountdownActive(false);
+			}
+		}
+		let microphoneLabel: string | undefined;
+		if (microphoneEnabled) {
+			try {
+				const devices = await navigator.mediaDevices.enumerateDevices();
+				microphoneLabel =
+					devices.find(
+						(device) =>
+							device.deviceId === microphoneDeviceId && device.kind === "audioinput",
+					)?.label || undefined;
+			} catch {
+				// The default microphone is used.
+			}
+		}
+		const result = await window.electronAPI.meetingStartAudioRecording({
+			capturesMicrophone: microphoneEnabled,
+			capturesSystemAudio: systemAudioEnabled,
+			microphoneLabel,
+		});
+		if (!result.success) {
+			throw new Error(result.message ?? "Could not start the meeting recording.");
+		}
+		nativeScreenRecording.current = true;
+		audioOnlyRecording.current = true;
+		if (startWasCancelled()) return;
+		resetRecordingClock(Date.now());
+		setRecording(true);
+		try {
+			await window.electronAPI?.setRecordingState(true);
+		} catch (stateError) {
+			console.warn(
+				"Failed to notify main process that the meeting recording started:",
+				stateError,
+			);
+		}
+	};
+
 	const startRecording = async () => {
 		if (startInFlight.current) {
 			return;
@@ -1682,6 +1772,10 @@ export function useScreenRecorder(): UseScreenRecorderReturn {
 		setStarting(true);
 
 		try {
+			if (audioOnlyMeeting) {
+				await startAudioOnlyMeeting(startWasCancelled);
+				return;
+			}
 			const preparedStart = await prepareRecordingStart();
 			if (!preparedStart || startWasCancelled()) {
 				cleanupCapturedMedia();
@@ -1719,6 +1813,7 @@ export function useScreenRecorder(): UseScreenRecorderReturn {
 						capturesMicrophone: microphoneEnabled,
 						microphoneDeviceId,
 						microphoneLabel: micLabel,
+						keepSpeakerTracks: meetingMode,
 					},
 				);
 				if (nativeResult.success && startWasCancelled()) {
@@ -2495,5 +2590,9 @@ export function useScreenRecorder(): UseScreenRecorderReturn {
 		setWebcamDeviceId: persistWebcamDeviceId,
 		countdownDelay,
 		setCountdownDelay,
+		meetingMode,
+		setMeetingMode,
+		recordScreen,
+		setRecordScreen,
 	};
 }

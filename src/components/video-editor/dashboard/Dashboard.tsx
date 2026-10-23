@@ -1,5 +1,6 @@
-import { DashboardAnnouncements } from "./DashboardAnnouncements";
 import { Card, Modal } from "@heroui/react";
+import { MeetingViewHost } from "@/components/meeting/MeetingViewHost";
+import { DashboardAnnouncements } from "./DashboardAnnouncements";
 import { DashboardFilters } from "./DashboardFilters";
 import { DashboardGrid } from "./DashboardGrid";
 import { DashboardSidebar } from "./DashboardSidebar";
@@ -8,7 +9,11 @@ import type { DashboardProps } from "./types";
 import { useDashboardModel } from "./useDashboardModel";
 export function Dashboard(props: DashboardProps) {
 	const model = useDashboardModel(props);
-	const view = { ...props, ...model };
+	const view = {
+		...props,
+		...model,
+		...(model.isMeetings ? { onImportFile: model.importMeeting } : {}),
+	};
 	return (
 		<>
 			<Modal isOpen={props.open} onOpenChange={props.onOpenChange}>
@@ -29,6 +34,8 @@ export function Dashboard(props: DashboardProps) {
 								)}
 								<DashboardGrid {...view} />
 							</Card>
+							{/* Nested so it always opens above the dashboard, never behind it. */}
+							<MeetingViewHost />
 						</Modal.Dialog>
 					</Modal.Container>
 				</Modal.Backdrop>

@@ -35,6 +35,10 @@ export function meetingFilesFor(mediaPath: string): MeetingFiles {
 }
 
 export interface MeetingMeta {
+	/** Set for recordings made (or imported) as meetings; they show up in the Meetings library. */
+	kind?: "meeting";
+	createdAt?: string;
+	hasVideo?: boolean;
 	language?: string | null;
 	durationMs?: number | null;
 	title?: string;

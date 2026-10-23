@@ -5,6 +5,8 @@ import { toFileUrl } from "./projectPersistence";
 
 export type ProjectLibraryEntry = {
 	rawSource?: import("@/types/recordingLibrary").RecordingLibraryEntry;
+	/** Set for entries of the Meetings library. */
+	meeting?: MeetingLibraryEntry;
 	path: string;
 	name: string;
 	createdAt?: number;

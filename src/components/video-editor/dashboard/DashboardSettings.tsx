@@ -5,6 +5,7 @@ import { Switch } from "@/components/ui/switch";
 import { supportsHudCaptureProtection } from "@/lib/hudCaptureProtection";
 import { Button } from "@/components/ui/button";
 import { toast } from "@/components/ui/toast";
+import { MeetingSettingsPanel } from "@/components/meeting/MeetingSettingsPanel";
 export const DashboardSettingsContext = createContext<ReactNode>(null);
 export function DashboardSettings({ onImportFile }: { onImportFile: () => Promise<void> }) {
 	const settingsContent = useContext(DashboardSettingsContext);
@@ -45,7 +46,7 @@ export function DashboardSettings({ onImportFile }: { onImportFile: () => Promis
 		<section aria-label="Dashboard settings" className="dashboard-settings max-w-2xl py-10">
 			<h1 className="mb-8 text-lg font-semibold">Settings</h1>
 			<SettingsSections
-				categories={["general", "permissions", "motion", "recording", "files"]}
+				categories={["general", "permissions", "motion", "recording", "meetings", "files"]}
 			>
 				<SettingsCategory category={["general", "permissions", "motion"]}>
 					{settingsContent}
@@ -61,6 +62,9 @@ export function DashboardSettings({ onImportFile }: { onImportFile: () => Promis
 							Open file
 						</Button>
 					</SettingsRow>
+				</SettingsCategory>
+				<SettingsCategory category="meetings">
+					<MeetingSettingsPanel />
 				</SettingsCategory>
 				<SettingsCategory category="recording">
 					<SettingsRow

@@ -279,6 +279,10 @@ export function EditorShell(props: Props) {
 							ui.setActiveEffectSection(section);
 						}}
 						settingsPanelProps={settingsPanelProps}
+						meetingMediaPath={project.videoSourcePath ?? null}
+						onMeetingSeek={(seconds) =>
+							ui.videoPlaybackRef.current?.seekTimeline(seconds)
+						}
 					/>
 					<EditorPreviewPanel
 						t={t}

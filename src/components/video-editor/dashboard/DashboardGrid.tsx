@@ -16,6 +16,9 @@ export function DashboardGrid({
 	onImportFile,
 	loading,
 	isRaw,
+	isMeetings,
+	meetingLoading,
+	meetingError,
 	rawPreview,
 	setRawPreview,
 	rawLoading,
@@ -43,6 +46,9 @@ export function DashboardGrid({
 	| "loading"
 	| "onImportFile"
 	| "isRaw"
+	| "isMeetings"
+	| "meetingLoading"
+	| "meetingError"
 	| "rawPreview"
 	| "setRawPreview"
 	| "rawLoading"
@@ -76,11 +82,13 @@ export function DashboardGrid({
 				)}
 				{section === "settings" ? (
 					<DashboardSettings onImportFile={onImportFile} />
-				) : (isRaw ? rawLoading : loading) ? (
+				) : (isRaw ? rawLoading : isMeetings ? meetingLoading : loading) ? (
 					<LibrarySkeleton />
 				) : visible.length ? (
 					<ul
-						aria-label={isRaw ? "Raw files" : "Your projects"}
+						aria-label={
+							isRaw ? "Raw files" : isMeetings ? "Your meetings" : "Your projects"
+						}
 						className="grid grid-cols-[repeat(auto-fill,minmax(min(100%,280px),1fr))] gap-x-7 gap-y-10 lg:gap-x-9"
 					>
 						{visible.map((entry) => (
@@ -105,7 +113,7 @@ export function DashboardGrid({
 					</ul>
 				) : (
 					<div className="flex h-64 flex-col items-center justify-center gap-3 text-sm text-muted-foreground">
-						{!isRaw && !hasActiveFilters ? (
+						{!isRaw && !isMeetings && !hasActiveFilters ? (
 							<span aria-hidden="true" className="text-4xl">
 								🦗
 							</span>
@@ -113,18 +121,23 @@ export function DashboardGrid({
 							<ImageSquare weight="fill" className="size-8 opacity-30" />
 						)}
 						<p>
-							{isRaw
-								? rawLoading
-									? "Loading recordings…"
-									: rawError ||
-										(hasActiveFilters
-											? "No matching raw files"
-											: "No raw recordings yet")
-								: hasActiveFilters
-									? "No matching projects"
-									: "It's looking empty in here..."}
+							{isMeetings
+								? meetingError ||
+									(hasActiveFilters
+										? "No matching meetings"
+										: "No meetings yet. Turn on meeting mode in the recorder, or import a recording.")
+								: isRaw
+									? rawLoading
+										? "Loading recordings…"
+										: rawError ||
+											(hasActiveFilters
+												? "No matching raw files"
+												: "No raw recordings yet")
+									: hasActiveFilters
+										? "No matching projects"
+										: "It's looking empty in here..."}
 						</p>
-						{!isRaw && !hasActiveFilters && (
+						{!isRaw && !isMeetings && !hasActiveFilters && (
 							<RecordNewButton busy={busy} run={run} first className="mt-2" />
 						)}
 						{isRaw && rawError && (

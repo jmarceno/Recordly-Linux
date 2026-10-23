@@ -1,5 +1,6 @@
 import { ProjectFolderChips } from "./ProjectFolderChips";
 import { RawThumbnail } from "./RawRecordings";
+import { MeetingThumbnail } from "./MeetingThumbnail";
 import { Dropdown } from "@heroui/react";
 import { Check, DotsThree, FolderSimple, Plus } from "@/components/ui/icons";
 import { useRef, useState } from "react";
@@ -78,7 +79,9 @@ export function ProjectCard({
 				aria-pressed={selecting ? selected.includes(entry.path) : undefined}
 				className="relative block h-auto w-full min-w-0 rounded-xl p-0"
 			>
-				{entry.rawSource ? (
+				{entry.meeting ? (
+					<MeetingThumbnail meeting={entry.meeting} />
+				) : entry.rawSource ? (
 					<RawThumbnail
 						entry={entry.rawSource}
 						active={hovering && !selecting && !busy}
@@ -112,7 +115,13 @@ export function ProjectCard({
 							<input
 								autoFocus
 								onFocus={(event) => event.currentTarget.select()}
-								aria-label={entry.rawSource ? "Raw file name" : "Project name"}
+								aria-label={
+									entry.meeting
+										? "Meeting title"
+										: entry.rawSource
+											? "Raw file name"
+											: "Project name"
+								}
 								className="inline-project-name h-5 w-full pr-8 text-[12px] font-medium"
 								value={name}
 								disabled={busy}
@@ -208,7 +217,11 @@ export function ProjectCard({
 					<Dropdown.Popover>
 						<Dropdown.Menu aria-label="Project options">
 							<Dropdown.Item id="open" onAction={() => openEntry(entry)}>
-								{entry.rawSource ? "Preview file" : "Open project"}
+								{entry.meeting
+									? "Open meeting"
+									: entry.rawSource
+										? "Preview file"
+										: "Open project"}
 							</Dropdown.Item>
 							<>
 								<Dropdown.Item
@@ -244,7 +257,11 @@ export function ProjectCard({
 									isDisabled={busy}
 									onAction={onDelete}
 								>
-									{entry.rawSource ? "Remove from library" : "Delete project"}
+									{entry.meeting
+										? "Move to trash"
+										: entry.rawSource
+											? "Remove from library"
+											: "Delete project"}
 								</Dropdown.Item>
 							)}
 						</Dropdown.Menu>

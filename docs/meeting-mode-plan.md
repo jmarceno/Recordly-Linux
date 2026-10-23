@@ -1,6 +1,7 @@
 # Meeting mode: bringing GravaAi's meeting features into Recordly
 
-Status: plan, nothing implemented. Written 2026-10-23 after reading both trees
+Status: Phase 1 and Phase 2 implemented (2026-10-23); the Check pass with a
+real long meeting is still open. Written 2026-10-23 after reading both trees
 (`~/Projects/Recordly` at `ca38addb`, `~/Projects/gravaai` at `e7e505d`).
 
 ## 1. What each app has today
@@ -172,6 +173,22 @@ Done when: a script/dev IPC call can record 2 min of audio-only, and produce
 
 Done when: from the HUD you can record a meeting with and without screen, get
 notes automatically, reopen it from the dashboard, and re-run each stage.
+
+**As built.** No project schema change: a meeting is its media file plus
+sidecars, marked by `kind: "meeting"` in `<base>.meeting.json`
+(`electron/ipc/meeting/library.ts` lists, imports, renames and trashes them).
+The dashboard has a Meetings section; the meeting view (`src/components/meeting/`)
+is nested inside the dashboard modal so it always opens above it. The HUD hands
+the meeting to the editor window through the main process
+(`meeting-request-open` / `meeting-take-open-request`), because the two windows
+load from different origins and do not share localStorage. The title is
+regenerated with the notes ("Name meetings from their notes"), not by its own
+button. Settings has a Meetings tab for services, models, API, prompt and
+downloads.
+
+Known gap: whisper invents text on silent or near-silent audio (a silent test
+meeting came out as Japanese). Whisper's VAD (`--vad` with the small Silero
+model) is the likely fix.
 
 ### Check
 

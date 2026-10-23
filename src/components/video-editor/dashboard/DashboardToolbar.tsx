@@ -11,6 +11,7 @@ import type { DashboardModel } from "./useDashboardModel";
 export function DashboardToolbar({
 	onImportFile,
 	isRaw,
+	isMeetings,
 	query,
 	setQuery,
 	run,
@@ -19,7 +20,7 @@ export function DashboardToolbar({
 	action = "import",
 }: Pick<
 	DashboardProps & DashboardModel,
-	"onImportFile" | "query" | "setQuery" | "run" | "busy" | "isRaw"
+	"onImportFile" | "query" | "setQuery" | "run" | "busy" | "isRaw" | "isMeetings"
 > & { actionLabel?: string; action?: "import" | "refresh" }) {
 	return (
 		<>
@@ -35,8 +36,20 @@ export function DashboardToolbar({
 					<Input
 						value={query}
 						onChange={(e) => setQuery(e.target.value)}
-						aria-label={isRaw ? "Search raw files" : "Search projects"}
-						placeholder={isRaw ? "Search raw files…" : "Search projects…"}
+						aria-label={
+							isRaw
+								? "Search raw files"
+								: isMeetings
+									? "Search meetings"
+									: "Search projects"
+						}
+						placeholder={
+							isRaw
+								? "Search raw files…"
+								: isMeetings
+									? "Search meetings…"
+									: "Search projects…"
+						}
 						className="h-11 w-full border-0 bg-default/30 pl-10 shadow-none"
 					/>
 				</div>

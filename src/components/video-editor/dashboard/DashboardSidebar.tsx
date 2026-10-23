@@ -1,7 +1,7 @@
 import { RecordNewButton } from "./RecordNewButton";
 import { SidebarCards } from "./SidebarCards";
 import { FolderRow } from "./FolderRow";
-import { File, GearSix, House, Plus } from "@/components/ui/icons";
+import { File, GearSix, House, Plus, UsersGroup } from "@/components/ui/icons";
 
 import { Button } from "@/components/ui/button";
 
@@ -68,6 +68,18 @@ export function DashboardSidebar({
 							className="size-[18px]"
 						/>
 						Raw
+					</Button>
+					<Button
+						variant="ghost"
+						className={navClass(section === "meetings")}
+						aria-current={section === "meetings" ? "page" : undefined}
+						onClick={() => setSection("meetings")}
+					>
+						<UsersGroup
+							weight={section === "meetings" ? "fill" : "regular"}
+							className="size-[18px]"
+						/>
+						Meetings
 					</Button>
 				</nav>
 				<div className="mb-2 mt-9 flex items-center justify-between pl-3">

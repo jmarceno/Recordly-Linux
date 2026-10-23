@@ -1,13 +1,14 @@
 import fs from "node:fs/promises";
-import { app, BrowserWindow, ipcMain } from "electron";
+import { app, BrowserWindow, dialog, ipcMain, shell } from "electron";
+import { buildMediaUrl, ensureMediaServer } from "../../mediaServer";
 import {
+	ensureAsset,
 	findMeetingAsset,
 	isAssetInstalled,
 	LLAMA_RUNTIME,
 	LOCAL_LLM_MODELS,
-	WHISPER_MODELS,
-	ensureAsset,
 	removeAsset,
+	WHISPER_MODELS,
 } from "../meeting/assets";
 import {
 	cancelMeetingJob,
@@ -15,6 +16,7 @@ import {
 	isMeetingJobInterrupted,
 	listMeetingJobs,
 } from "../meeting/jobs";
+import { importMeetingFile, listMeetings, renameMeeting, trashMeeting } from "../meeting/library";
 import { stopLocalModelServer } from "../meeting/llamaServer";
 import { type MeetingJobMode, meetingFilesFor, readMeetingMeta } from "../meeting/pipeline";
 import {
@@ -23,7 +25,7 @@ import {
 	writeMeetingApiKey,
 	writeMeetingSettings,
 } from "../meeting/settings";
-import { isAllowedLocalReadPath } from "../project/manager";
+import { isAllowedLocalReadPath, rememberApprovedLocalReadPath } from "../project/manager";
 import { startCosmicAudioRecording } from "../recording/cosmic";
 import type { NativeMacRecordingOptions } from "../types";
 
@@ -57,6 +59,123 @@ export function registerMeetingHandlers() {
 	});
 
 	ipcMain.handle("meeting-get-settings", () => readMeetingSettingsView());
+
+	ipcMain.handle("meeting-list", async () => {
+		try {
+			return { success: true as const, meetings: await listMeetings() };
+		} catch (error) {
+			return errorResult(error);
+		}
+	});
+
+	ipcMain.handle("meeting-media-url", async (_, mediaPath: string) => {
+		try {
+			const allowed = requireAllowedMedia(mediaPath);
+			// The media server only serves files approved for this session.
+			await rememberApprovedLocalReadPath(allowed);
+			return {
+				success: true as const,
+				url: buildMediaUrl(await ensureMediaServer(), allowed),
+			};
+		} catch (error) {
+			return errorResult(error);
+		}
+	});
+
+	ipcMain.handle("meeting-import", async () => {
+		try {
+			const result = await dialog.showOpenDialog({
+				title: "Import a meeting recording",
+				filters: [
+					{
+						name: "Audio or video",
+						extensions: [
+							"m4a",
+							"mp3",
+							"wav",
+							"ogg",
+							"opus",
+							"flac",
+							"aac",
+							"mp4",
+							"mov",
+							"webm",
+							"mkv",
+						],
+					},
+				],
+				properties: ["openFile"],
+			});
+			if (result.canceled || result.filePaths.length === 0) {
+				return { success: false as const, canceled: true };
+			}
+			return {
+				success: true as const,
+				mediaPath: await importMeetingFile(result.filePaths[0]),
+			};
+		} catch (error) {
+			return errorResult(error);
+		}
+	});
+
+	ipcMain.handle("meeting-rename", async (_, request: { mediaPath: string; title: string }) => {
+		try {
+			const allowed = requireAllowedMedia(request?.mediaPath);
+			return {
+				success: true as const,
+				title: await renameMeeting(allowed, String(request.title ?? "")),
+			};
+		} catch (error) {
+			return errorResult(error);
+		}
+	});
+
+	ipcMain.handle("meeting-delete", async (_, mediaPaths: string[]) => {
+		const deleted: string[] = [];
+		for (const mediaPath of Array.isArray(mediaPaths) ? mediaPaths : []) {
+			try {
+				const allowed = requireAllowedMedia(mediaPath);
+				if (
+					listMeetingJobs().some(
+						(job) =>
+							job.mediaPath === allowed &&
+							(job.status === "queued" || job.status === "running"),
+					)
+				) {
+					continue;
+				}
+				await trashMeeting(allowed);
+				deleted.push(allowed);
+			} catch (error) {
+				console.warn("[meeting] Could not delete", mediaPath, error);
+			}
+		}
+		return { success: true as const, deleted };
+	});
+
+	ipcMain.handle("meeting-reveal", (_, mediaPath: string) => {
+		try {
+			shell.showItemInFolder(requireAllowedMedia(mediaPath));
+			return { success: true as const };
+		} catch (error) {
+			return errorResult(error);
+		}
+	});
+
+	// The HUD and editor windows load from different origins, so the meeting to
+	// open after an audio-only recording waits here until the editor takes it.
+	let requestedMeeting: string | null = null;
+	ipcMain.handle("meeting-request-open", (_, mediaPath: string) => {
+		requestedMeeting = mediaPath;
+		for (const window of BrowserWindow.getAllWindows()) {
+			if (!window.isDestroyed()) window.webContents.send("meeting-open-requested");
+		}
+	});
+	ipcMain.handle("meeting-take-open-request", () => {
+		const mediaPath = requestedMeeting;
+		requestedMeeting = null;
+		return mediaPath;
+	});
 
 	ipcMain.handle(
 		"meeting-set-settings",

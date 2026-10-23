@@ -586,6 +586,7 @@ contextBridge.exposeInMainWorld("electronAPI", {
 			capturesMicrophone?: boolean;
 			microphoneDeviceId?: string;
 			microphoneLabel?: string;
+			keepSpeakerTracks?: boolean;
 		},
 	) => {
 		return ipcRenderer.invoke("start-native-screen-recording", source, options);
@@ -801,6 +802,21 @@ contextBridge.exposeInMainWorld("electronAPI", {
 		return ipcRenderer.invoke("generate-auto-captions", options);
 	},
 	meetingGetSettings: () => ipcRenderer.invoke("meeting-get-settings"),
+	meetingList: () => ipcRenderer.invoke("meeting-list"),
+	meetingMediaUrl: (mediaPath: string) => ipcRenderer.invoke("meeting-media-url", mediaPath),
+	meetingImport: () => ipcRenderer.invoke("meeting-import"),
+	meetingRename: (request: { mediaPath: string; title: string }) =>
+		ipcRenderer.invoke("meeting-rename", request),
+	meetingDelete: (mediaPaths: string[]) => ipcRenderer.invoke("meeting-delete", mediaPaths),
+	meetingReveal: (mediaPath: string) => ipcRenderer.invoke("meeting-reveal", mediaPath),
+	meetingRequestOpen: (mediaPath: string) =>
+		ipcRenderer.invoke("meeting-request-open", mediaPath),
+	meetingTakeOpenRequest: () => ipcRenderer.invoke("meeting-take-open-request"),
+	onMeetingOpenRequested: (callback: () => void) => {
+		const listener = () => callback();
+		ipcRenderer.on("meeting-open-requested", listener);
+		return () => ipcRenderer.removeListener("meeting-open-requested", listener);
+	},
 	meetingSetSettings: (patch: Record<string, unknown>) =>
 		ipcRenderer.invoke("meeting-set-settings", patch),
 	meetingStartAudioRecording: (options?: {

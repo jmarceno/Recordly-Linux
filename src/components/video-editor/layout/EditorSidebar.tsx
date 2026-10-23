@@ -1,4 +1,12 @@
-import { Camera, ClosedCaptioning, Cursor, Gear, FrameCorners } from "@/components/ui/icons";
+import {
+	Camera,
+	ClosedCaptioning,
+	Cursor,
+	DocumentText,
+	Gear,
+	FrameCorners,
+} from "@/components/ui/icons";
+import { MeetingNotes } from "@/components/meeting/MeetingNotes";
 import { ToggleButtonGroup, ToggleButton, Tooltip, Card, Switch, Label } from "@heroui/react";
 import type { ComponentProps, ReactNode } from "react";
 import { useMemo, useState } from "react";
@@ -13,6 +21,9 @@ type Props = {
 	activeSection: EditorEffectSection;
 	setActiveSection: (section: EditorEffectSection) => void;
 	settingsPanelProps: ComponentProps<typeof SettingsPanel>;
+	/** Recording whose transcript and notes the Notes section shows. */
+	meetingMediaPath: string | null;
+	onMeetingSeek: (seconds: number) => void;
 };
 
 export function EditorSidebar({
@@ -21,6 +32,8 @@ export function EditorSidebar({
 	setActiveSection,
 	settingsPanelProps,
 	panelContent,
+	meetingMediaPath,
+	onMeetingSeek,
 }: Props) {
 	const [advancedSections, setAdvancedSections] = useState<Record<string, boolean>>({});
 	const advanced = advancedSections[activeSection] ?? false;
@@ -43,6 +56,7 @@ export function EditorSidebar({
 				label: t("settings.sections.captions", "Captions"),
 				icon: ClosedCaptioning,
 			},
+			{ id: "meeting" as const, label: "Transcript & notes", icon: DocumentText },
 			{
 				id: "settings" as const,
 				label: t("settings.sections.settings", "Settings"),
@@ -133,6 +147,18 @@ export function EditorSidebar({
 							</header>
 							{activeSection === "extensions" ? (
 								<ExtensionManager />
+							) : activeSection === "meeting" ? (
+								meetingMediaPath ? (
+									<MeetingNotes
+										mediaPath={meetingMediaPath}
+										onSeek={onMeetingSeek}
+										className="flex-1 px-4 pb-4"
+									/>
+								) : (
+									<p className="px-5 text-[13px] text-muted-foreground">
+										Open a recording to transcribe it and write notes.
+									</p>
+								)
 							) : (
 								<SettingsPanel {...settingsPanelProps} advanced={advanced} />
 							)}

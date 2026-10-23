@@ -432,6 +432,8 @@ export async function stopCosmicRecording(): Promise<{
 	success: boolean;
 	path?: string;
 	error?: string;
+	/** Set for meeting recordings (speaker tracks kept). */
+	meeting?: { hasVideo: boolean };
 }> {
 	const recording = active;
 	if (!recording) return { success: false, error: "No screen recording is active." };
@@ -521,7 +523,11 @@ export async function stopCosmicRecording(): Promise<{
 
 	await removeCosmicTempFiles(recording);
 	console.log(`[cosmic-capture] Saved ${recording.outputPath}`);
-	return { success: true, path: recording.outputPath };
+	return {
+		success: true,
+		path: recording.outputPath,
+		...(recording.keepSpeakerTracks ? { meeting: { hasVideo: Boolean(video) } } : {}),
+	};
 }
 
 async function removeCosmicTempFiles(recording: ActiveCosmicRecording) {

@@ -167,6 +167,7 @@ import {
 	startCosmicRecording,
 	stopCosmicRecording,
 } from "../recording/cosmic";
+import { registerMeetingRecording } from "../meeting/library";
 import { getSourceArea } from "../sourceArea";
 import { bringSelectedWindowForward } from "./sources";
 
@@ -977,7 +978,13 @@ export function registerRecordingHandlers(
 		const start = Date.now();
 		console.log("[PERF:MAIN] Handler: stop-native-screen-recording: STARTED");
 		if (process.platform === "linux" && isCosmicRecordingActive()) {
-			return stopCosmicRecording();
+			const result = await stopCosmicRecording();
+			if (result.success && result.path && result.meeting) {
+				await registerMeetingRecording(result.path, result.meeting).catch((error) =>
+					console.error("[meeting] Could not register the meeting recording:", error),
+				);
+			}
+			return result;
 		}
 		try {
 			// Windows native capture stop path

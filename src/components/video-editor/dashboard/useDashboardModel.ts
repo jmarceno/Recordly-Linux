@@ -1,4 +1,6 @@
 import { useRawLibrary } from "./useRawLibrary";
+import { useMeetingLibrary } from "./useMeetingLibrary";
+import { requestOpenMeeting } from "@/components/meeting/MeetingViewHost";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "@/components/ui/toast";
 import type { ProjectLibraryEntry } from "../ProjectBrowserDialog";
@@ -49,16 +51,18 @@ export function useDashboardModel({
 		setSelected([]);
 	}, [open]);
 	const raw = useRawLibrary(open && library === "raw");
+	const meetings = useMeetingLibrary(open && library === "meetings");
 	const [rawPreview, setRawPreview] = useState<ProjectLibraryEntry | null>(null);
 	const isRaw = library === "raw";
+	const isMeetings = library === "meetings";
 	const setSection = (next: string) => {
-		if (next === "projects" || next === "raw") setLibrary(next);
+		if (next === "projects" || next === "raw" || next === "meetings") setLibrary(next);
 		changeSection(next);
 		setQuery("");
 		setSelecting(false);
 		setSelected([]);
 	};
-	const libraryEntries = isRaw ? raw.entries : entries;
+	const libraryEntries = isRaw ? raw.entries : isMeetings ? meetings.entries : entries;
 	const [busy, setBusy] = useState(false);
 	const visible = useMemo(
 		() =>
@@ -99,7 +103,11 @@ export function useDashboardModel({
 	};
 	const deleteEntries = (paths: string[]) =>
 		run(async () => {
-			const deleted = await (isRaw ? raw.remove : onDeleteProjects)(paths);
+			const deleted = await (isRaw
+				? raw.remove
+				: isMeetings
+					? meetings.remove
+					: onDeleteProjects)(paths);
 			save(
 				folders.map((folder) => ({
 					...folder,
@@ -111,13 +119,15 @@ export function useDashboardModel({
 		});
 
 	const openEntry = (entry: ProjectLibraryEntry) =>
-		entry.rawSource
-			? setRawPreview(entry)
-			: entry.isCurrent
-				? onOpenChange(false)
-				: void run(async () => {
-						await onOpenProject(entry.path);
-					});
+		entry.meeting
+			? requestOpenMeeting(entry.path)
+			: entry.rawSource
+				? setRawPreview(entry)
+				: entry.isCurrent
+					? onOpenChange(false)
+					: void run(async () => {
+							await onOpenProject(entry.path);
+						});
 	const navClass = (active: boolean) =>
 		`h-10 w-full justify-start gap-3 px-3 text-[13px] ${active ? "bg-default/50 font-medium" : "text-muted-foreground"}`;
 
@@ -128,8 +138,15 @@ export function useDashboardModel({
 		rawLoading: raw.loading,
 		rawError: raw.error,
 		refreshRaw: raw.refresh,
-		onRenameProject: isRaw ? raw.rename : onRenameProject,
-		onDeleteProjects: isRaw ? raw.remove : onDeleteProjects,
+		isMeetings,
+		meetingLoading: meetings.loading,
+		meetingError: meetings.error,
+		importMeeting: async () => {
+			const mediaPath = await meetings.importFile();
+			if (mediaPath) requestOpenMeeting(mediaPath);
+		},
+		onRenameProject: isRaw ? raw.rename : isMeetings ? meetings.rename : onRenameProject,
+		onDeleteProjects: isRaw ? raw.remove : isMeetings ? meetings.remove : onDeleteProjects,
 		metadata,
 		update,
 		selecting,
