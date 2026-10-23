@@ -186,9 +186,12 @@ regenerated with the notes ("Name meetings from their notes"), not by its own
 button. Settings has a Meetings tab for services, models, API, prompt and
 downloads.
 
-Known gap: whisper invents text on silent or near-silent audio (a silent test
-meeting came out as Japanese). Whisper's VAD (`--vad` with the small Silero
-model) is the likely fix.
+Silence: whisper invents text on silent audio, so local transcription runs
+with whisper's voice detection (`--vad`, Silero model, 885 KB, downloaded on
+first use). A recording with no speech fails with "No speech was found", and
+clears its old transcript, notes and any automatic title (`titleSource:
+"auto"`); a title the user typed is never replaced. The API transcription
+path has no voice detection yet.
 
 ### Check
 

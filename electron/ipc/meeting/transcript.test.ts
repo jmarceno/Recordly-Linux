@@ -62,12 +62,20 @@ describe("whisper input", () => {
 		expect(args[args.indexOf("-ac") + 1]).toBe("1");
 	});
 
+	const base = { modelPath: "m", wavPath: "w", outputBase: "o", language: "", threads: 4 };
+
 	it("only asks whisper to diarize stereo input", () => {
-		const base = { modelPath: "m", wavPath: "w", outputBase: "o", language: "", threads: 4 };
 		expect(whisperMeetingArgs({ ...base, diarize: true })).toContain("-di");
 		const mono = whisperMeetingArgs({ ...base, diarize: false });
 		expect(mono).not.toContain("-di");
 		expect(mono[mono.indexOf("-l") + 1]).toBe("auto");
+		expect(mono).not.toContain("--vad");
+	});
+
+	it("decodes only detected speech when a voice-detection model is given", () => {
+		const args = whisperMeetingArgs({ ...base, diarize: true, vadModelPath: "/m/vad.bin" });
+		expect(args).toContain("--vad");
+		expect(args[args.indexOf("-vm") + 1]).toBe("/m/vad.bin");
 	});
 });
 

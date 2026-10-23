@@ -146,7 +146,7 @@ export async function importMeetingFile(sourcePath: string) {
 export async function renameMeeting(mediaPath: string, title: string) {
 	const trimmed = title.trim();
 	if (!trimmed) throw new Error("The title cannot be empty.");
-	await updateMeetingMeta(mediaPath, { title: trimmed.slice(0, 120) });
+	await updateMeetingMeta(mediaPath, { title: trimmed.slice(0, 120), titleSource: "user" });
 	return trimmed;
 }
 

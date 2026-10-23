@@ -68,6 +68,16 @@ export const WHISPER_MODELS = {
 
 export type WhisperModelId = keyof typeof WHISPER_MODELS;
 
+/** Silero voice detection: whisper only decodes speech, so silence cannot turn into invented text. */
+export const WHISPER_VAD_MODEL: MeetingAsset = {
+	id: "whisper-vad",
+	label: "Silero voice detection",
+	url: "https://huggingface.co/ggml-org/whisper-vad/resolve/main/ggml-silero-v5.1.2.bin",
+	sha256: "29940d98d42b91fbd05ce489f3ecf7c72f0a42f027e4875919a28fb4c04ea2cf",
+	sizeBytes: 885_098,
+	path: path.join(WHISPER_MODEL_DIR, "ggml-silero-v5.1.2.bin"),
+};
+
 export const LOCAL_LLM_MODELS = {
 	"qwen3.5-2b": {
 		id: "qwen3.5-2b",
@@ -93,6 +103,7 @@ export function findMeetingAsset(id: string): MeetingAsset | null {
 	if (id === LLAMA_RUNTIME.id) return LLAMA_RUNTIME;
 	const all: MeetingAsset[] = [
 		...Object.values(WHISPER_MODELS),
+		WHISPER_VAD_MODEL,
 		...Object.values(LOCAL_LLM_MODELS),
 	];
 	return all.find((asset) => asset.id === id) ?? null;

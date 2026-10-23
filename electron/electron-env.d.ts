@@ -56,6 +56,7 @@ interface MeetingMeta {
 	language?: string | null;
 	durationMs?: number | null;
 	title?: string;
+	titleSource?: "auto" | "user";
 	transcribedAt?: string;
 	summarizedAt?: string;
 	transcriptionSource?: string;

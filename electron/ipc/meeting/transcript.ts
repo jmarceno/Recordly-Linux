@@ -89,6 +89,7 @@ export function whisperMeetingArgs(options: {
 	language: string;
 	threads: number;
 	diarize: boolean;
+	vadModelPath?: string;
 }) {
 	return [
 		"-m",
@@ -104,6 +105,8 @@ export function whisperMeetingArgs(options: {
 		"-mc",
 		"0",
 		...(options.diarize ? ["-di"] : []),
+		// Decode only detected speech; on silence whisper invents text.
+		...(options.vadModelPath ? ["--vad", "-vm", options.vadModelPath] : []),
 		"-oj",
 		"-of",
 		options.outputBase,
@@ -202,6 +205,7 @@ export async function probeDurationMs(mediaPath: string): Promise<number | null>
 export async function transcribeWithWhisper(options: {
 	inputs: MeetingAudioInputs;
 	modelPath: string;
+	vadModelPath?: string;
 	language: string;
 	onStatus?: MeetingStatusCallback;
 	signal?: AbortSignal;
@@ -225,6 +229,7 @@ export async function transcribeWithWhisper(options: {
 			// whisper scales with physical cores, not SMT threads.
 			threads: Math.min(8, Math.max(1, Math.floor(os.availableParallelism() / 2))),
 			diarize,
+			vadModelPath: options.vadModelPath,
 		});
 		options.onStatus?.("Transcribing…", 0);
 		await runWhisperWithProgress(whisper, args, options.onStatus, options.signal);

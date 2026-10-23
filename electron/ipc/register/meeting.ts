@@ -9,6 +9,7 @@ import {
 	LOCAL_LLM_MODELS,
 	removeAsset,
 	WHISPER_MODELS,
+	WHISPER_VAD_MODEL,
 } from "../meeting/assets";
 import {
 	cancelMeetingJob,
@@ -258,6 +259,7 @@ export function registerMeetingHandlers() {
 		const assets = [
 			LLAMA_RUNTIME,
 			...Object.values(WHISPER_MODELS),
+			WHISPER_VAD_MODEL,
 			...Object.values(LOCAL_LLM_MODELS),
 		];
 		return Promise.all(

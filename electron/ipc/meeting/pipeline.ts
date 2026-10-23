@@ -1,5 +1,5 @@
 import fs from "node:fs/promises";
-import { WHISPER_MODELS, ensureAsset } from "./assets";
+import { WHISPER_MODELS, WHISPER_VAD_MODEL, ensureAsset } from "./assets";
 import { transcribeWithApi } from "./apiTranscription";
 import type { MeetingContext, MeetingStatusCallback } from "./context";
 import { LOCAL_CONTEXT_TOKENS, startLocalModelServer, stopLocalModelServer } from "./llamaServer";
@@ -42,6 +42,8 @@ export interface MeetingMeta {
 	language?: string | null;
 	durationMs?: number | null;
 	title?: string;
+	/** "auto" when the title came from the notes; a typed title is never replaced or cleared. */
+	titleSource?: "auto" | "user";
 	transcribedAt?: string;
 	summarizedAt?: string;
 	transcriptionSource?: string;
@@ -105,9 +107,13 @@ async function runTranscription(
 		const modelPath = await ensureAsset(model, (percent) =>
 			onStatus(`Downloading ${model.label}…`, percent),
 		);
+		const vadModelPath = await ensureAsset(WHISPER_VAD_MODEL, (percent) =>
+			onStatus(`Downloading ${WHISPER_VAD_MODEL.label}…`, percent),
+		);
 		result = await transcribeWithWhisper({
 			inputs,
 			modelPath,
+			vadModelPath,
 			language: settings.language,
 			onStatus,
 			signal,
@@ -115,6 +121,17 @@ async function runTranscription(
 		source = `whisper:${settings.whisperModel}`;
 	}
 	if (result.segments.length === 0) {
+		// A transcript or notes left from an earlier run of this audio were invented.
+		const files = meetingFilesFor(mediaPath);
+		await Promise.all([
+			fs.rm(files.transcript, { force: true }),
+			fs.rm(files.notes, { force: true }),
+		]);
+		const meta = await readMeetingMeta(mediaPath);
+		await updateMeetingMeta(mediaPath, {
+			language: undefined,
+			...(meta.titleSource === "auto" ? { title: undefined, titleSource: undefined } : {}),
+		});
 		throw new Error("No speech was found in this recording.");
 	}
 	const transcript = formatTranscriptMarkdown(result.segments);
@@ -216,12 +233,12 @@ export async function runMeetingPipeline(options: {
 			summarizationSource: source,
 		});
 
-		if (settings.autoTitle) {
+		if (settings.autoTitle && meta.titleSource !== "user") {
 			signal.throwIfAborted();
 			options.onStatus("title", "Generating a title…");
 			try {
 				const title = await summarizer.title(notes, context, signal);
-				if (title) await updateMeetingMeta(mediaPath, { title });
+				if (title) await updateMeetingMeta(mediaPath, { title, titleSource: "auto" });
 			} catch (error) {
 				// A missing title must not fail notes that were already written.
 				console.warn("[meeting] Title generation failed:", error);
