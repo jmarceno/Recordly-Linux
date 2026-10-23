@@ -33,34 +33,15 @@ import { shouldGrantDisplayCapture, shouldGrantMediaPermission } from "./permiss
 import { ensurePackagedRendererServer, getPackagedRendererBaseUrl } from "./rendererServer";
 import { createSaveBeforeCloseController } from "./saveBeforeClose";
 import {
-	checkForAppUpdates,
-	deferUpdateReminder,
-	dismissUpdateToast,
-	downloadAvailableUpdate,
-	getCurrentUpdateToastPayload,
-	getExperimentalUpdatesEnabled,
-	getUpdaterLogPath,
-	getUpdateStatusSummary,
-	installDownloadedUpdateNow,
-	previewNativeUpdateDialog,
-	previewUpdateToast,
-	setExperimentalUpdatesEnabled,
-	setupAutoUpdates,
-	skipAvailableUpdateVersion,
-} from "./updater";
-import {
 	beginHudCaptureProtection,
 	createEditorWindow,
 	createHudOverlayWindow,
 	createSourceSelectorWindow,
 	getHudMenuWindow,
 	getHudOverlayWindow,
-	getUpdateToastWindow,
-	hideUpdateToastWindow,
 	isHudOverlayMousePassthroughSupported,
 	reassertHudOverlayMousePassthrough as reassertHudOverlayMouseState,
 	setHudOverlayRecordingActive,
-	showUpdateToastWindow,
 } from "./windows";
 
 const electronMainDir = path.dirname(fileURLToPath(import.meta.url));
@@ -279,14 +260,6 @@ function getRecordingTrayIcon() {
 }
 
 function showHudOverlayFromTray() {
-	const updateToast = getUpdateToastWindow();
-	if (updateToast?.isVisible()) {
-		updateToast.show();
-		updateToast.moveTop();
-		updateToast.focus();
-		return true;
-	}
-
 	const hud = getHudOverlayWindow();
 	if (!hud) {
 		return false;
@@ -355,14 +328,6 @@ function focusOrCreateMainWindow() {
 		void app.whenReady().then(() => {
 			focusOrCreateMainWindow();
 		});
-		return;
-	}
-
-	const updateToast = getUpdateToastWindow();
-	if (updateToast?.isVisible()) {
-		updateToast.show();
-		updateToast.moveTop();
-		updateToast.focus();
 		return;
 	}
 
@@ -521,17 +486,6 @@ function setupApplicationMenu() {
 				? [{ role: "minimize" }, { role: "zoom" }, { type: "separator" }, { role: "front" }]
 				: [{ role: "minimize" }, { role: "close" }],
 		},
-		{
-			label: "Help",
-			submenu: [
-				{
-					label: "Check for Updates…",
-					click: () => {
-						void checkForAppUpdates(getUpdateDialogWindow, { manual: true });
-					},
-				},
-			],
-		},
 	);
 
 	const menu = Menu.buildFromTemplate(template);
@@ -602,116 +556,6 @@ function syncDockIcon() {
 		app.dock.setIcon(dockIcon);
 	}
 }
-
-function sendUpdateToastToWindows(channel: "update-toast-state", payload: unknown) {
-	if (process.platform !== "darwin") {
-		return false;
-	}
-
-	if (!payload) {
-		const existingWindow = getUpdateToastWindow();
-		if (existingWindow) {
-			existingWindow.webContents.send(channel, null);
-		}
-		hideUpdateToastWindow();
-		return true;
-	}
-
-	const toastWindow = showUpdateToastWindow();
-	const sendPayload = () => {
-		toastWindow.webContents.send(channel, payload);
-		showUpdateToastWindow();
-	};
-
-	if (toastWindow.webContents.isLoadingMainFrame()) {
-		toastWindow.webContents.once("did-finish-load", sendPayload);
-	} else {
-		sendPayload();
-	}
-
-	return true;
-}
-
-function getUpdateDialogWindow() {
-	const focusedWindow = BrowserWindow.getFocusedWindow();
-	if (focusedWindow && !focusedWindow.isDestroyed()) {
-		return focusedWindow;
-	}
-
-	if (mainWindow && !mainWindow.isDestroyed()) {
-		return mainWindow;
-	}
-
-	return getHudOverlayWindow();
-}
-
-ipcMain.handle("install-downloaded-update", () => {
-	installDownloadedUpdateNow(sendUpdateToastToWindows);
-	return { success: true };
-});
-
-ipcMain.handle("download-available-update", (_event, installAfterDownload?: boolean) => {
-	return downloadAvailableUpdate(sendUpdateToastToWindows, {
-		installAfterDownload: Boolean(installAfterDownload),
-	});
-});
-
-ipcMain.handle("defer-downloaded-update", (_event, delayMs?: number) => {
-	return deferUpdateReminder(getUpdateDialogWindow, sendUpdateToastToWindows, delayMs);
-});
-
-ipcMain.handle("dismiss-update-toast", () => {
-	return dismissUpdateToast(getUpdateDialogWindow, sendUpdateToastToWindows);
-});
-
-ipcMain.handle("skip-update-version", () => {
-	return skipAvailableUpdateVersion(sendUpdateToastToWindows);
-});
-
-ipcMain.handle("get-current-update-toast-payload", () => {
-	return getCurrentUpdateToastPayload();
-});
-
-ipcMain.handle("get-update-status-summary", () => {
-	return getUpdateStatusSummary();
-});
-
-ipcMain.handle("get-experimental-updates-enabled", () => {
-	return getExperimentalUpdatesEnabled();
-});
-
-ipcMain.handle("set-experimental-updates-enabled", async (_event, enabled: unknown) => {
-	if (typeof enabled !== "boolean") {
-		return { success: false, enabled: getExperimentalUpdatesEnabled() };
-	}
-
-	try {
-		const savedValue = setExperimentalUpdatesEnabled(enabled);
-		await checkForAppUpdates(getUpdateDialogWindow);
-		return { success: true, enabled: savedValue };
-	} catch (error) {
-		console.error("Failed to update experimental updates preference:", error);
-		return {
-			success: false,
-			enabled: getExperimentalUpdatesEnabled(),
-			error: String(error),
-		};
-	}
-});
-
-ipcMain.handle("preview-update-toast", async () => {
-	if (process.platform !== "darwin") {
-		await previewNativeUpdateDialog(getUpdateDialogWindow);
-		return { success: true };
-	}
-
-	return { success: previewUpdateToast(sendUpdateToastToWindows) };
-});
-
-ipcMain.handle("check-for-app-updates", async () => {
-	await checkForAppUpdates(getUpdateDialogWindow, { manual: true });
-	return { success: true, logPath: getUpdaterLogPath() };
-});
 
 function updateTrayMenu(recording: boolean = false) {
 	if (!tray) return;
@@ -1048,18 +892,6 @@ app.whenReady().then(async () => {
 	}
 
 	createWindow();
-	// Fork: no auto-updates; upstream releases would replace this build.
-	void setupAutoUpdates;
-	if (IS_DEV && process.env.RECORDLY_DEV_PREVIEW_UPDATE === "1") {
-		setTimeout(() => {
-			if (process.platform === "darwin") {
-				previewUpdateToast(sendUpdateToastToWindows);
-				return;
-			}
-
-			void previewNativeUpdateDialog(getUpdateDialogWindow);
-		}, 750);
-	}
 
 	// Register the display media handler so that renderer's getDisplayMedia()
 	// calls land on the pre-selected source without showing a system picker.
@@ -1123,9 +955,4 @@ app.whenReady().then(async () => {
 			callback({});
 		}
 	});
-
-	const currentToastPayload = getCurrentUpdateToastPayload();
-	if (currentToastPayload) {
-		sendUpdateToastToWindows("update-toast-state", currentToastPayload);
-	}
 });

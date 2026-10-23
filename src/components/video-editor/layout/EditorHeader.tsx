@@ -43,9 +43,6 @@ type Props = {
 	exportDimensions: ReturnType<typeof useExportDimensions>;
 	exportStatus: ReturnType<typeof useExportStatusViewModel>;
 	hasCaptionsForSidecar: boolean;
-	nvidiaCudaExportAvailable: boolean;
-	experimentalNvidiaCudaExport: boolean;
-	setExperimentalNvidiaCudaExport: (enabled: boolean) => void;
 	handleOpenExportDropdown: () => void;
 	handleExportDropdownClose: () => void;
 	handleCancelExport: () => void;
@@ -76,9 +73,6 @@ export function EditorHeader(props: Props) {
 		exportDimensions,
 		exportStatus,
 		hasCaptionsForSidecar,
-		nvidiaCudaExportAvailable,
-		experimentalNvidiaCudaExport,
-		setExperimentalNvidiaCudaExport,
 		handleOpenExportDropdown,
 		handleExportDropdownClose,
 		handleCancelExport,
@@ -223,9 +217,6 @@ export function EditorHeader(props: Props) {
 					exportDimensions={exportDimensions}
 					exportStatus={exportStatus}
 					hasCaptionsForSidecar={hasCaptionsForSidecar}
-					nvidiaCudaExportAvailable={nvidiaCudaExportAvailable}
-					experimentalNvidiaCudaExport={experimentalNvidiaCudaExport}
-					setExperimentalNvidiaCudaExport={setExperimentalNvidiaCudaExport}
 					handleOpenExportDropdown={handleOpenExportDropdown}
 					handleExportDropdownClose={handleExportDropdownClose}
 					handleCancelExport={handleCancelExport}

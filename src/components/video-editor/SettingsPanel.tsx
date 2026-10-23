@@ -485,11 +485,8 @@ interface SettingsPanelProps {
 	onCursorSpringDampingMultiplierChange?: (multiplier: number) => void;
 	cursorSpringMassMultiplier?: number;
 	onCursorSpringMassMultiplierChange?: (multiplier: number) => void;
-	cameraSpringStiffnessMultiplier?: number;
 	onCameraSpringStiffnessMultiplierChange?: (multiplier: number) => void;
-	cameraSpringDampingMultiplier?: number;
 	onCameraSpringDampingMultiplierChange?: (multiplier: number) => void;
-	cameraSpringMassMultiplier?: number;
 	onCameraSpringMassMultiplierChange?: (multiplier: number) => void;
 	zoomClassicMode?: boolean;
 	onZoomClassicModeChange?: (enabled: boolean) => void;
@@ -555,8 +552,6 @@ interface SettingsPanelProps {
 	onCaptionSplit?: (id: string, atMs: number) => void;
 	onCaptionMerge?: (idA: string, idB: string) => void;
 	onCaptionDelete?: (id: string) => void;
-	nativeCaptureUnavailableSession?: boolean;
-	onOpenNativeCaptureUnavailableModal?: () => void;
 }
 
 const ZOOM_DEPTH_OPTIONS: Array<{ depth: ZoomDepth; label: string }> = [
@@ -929,11 +924,8 @@ export function SettingsPanel({
 	onCursorSpringDampingMultiplierChange,
 	cursorSpringMassMultiplier = 1,
 	onCursorSpringMassMultiplierChange,
-	cameraSpringStiffnessMultiplier = 1,
 	onCameraSpringStiffnessMultiplierChange,
-	cameraSpringDampingMultiplier = 1.13,
 	onCameraSpringDampingMultiplierChange,
-	cameraSpringMassMultiplier = 1.12,
 	onCameraSpringMassMultiplierChange,
 	zoomClassicMode = false,
 	onZoomClassicModeChange,
@@ -997,8 +989,6 @@ export function SettingsPanel({
 	onCaptionSplit,
 	onCaptionMerge,
 	onCaptionDelete,
-	nativeCaptureUnavailableSession = false,
-	onOpenNativeCaptureUnavailableModal,
 }: SettingsPanelProps) {
 	const tSettings = useScopedT("settings");
 	const { locale, setLocale, t } = useI18n();
@@ -1012,8 +1002,6 @@ export function SettingsPanel({
 	const [customImages, setCustomImages] = useState<string[]>(
 		initialEditorPreferences.customWallpapers,
 	);
-	const [experimentalUpdatesEnabled, setExperimentalUpdatesEnabled] = useState(false);
-	const [savingExperimentalUpdates, setSavingExperimentalUpdates] = useState(false);
 	const { openConfig: openShortcutsConfig } = useShortcuts();
 	const [internalActiveEffectSection] = useState<EditorEffectSection>("scene");
 	const activeEffectSection = activeEffectSectionProp ?? internalActiveEffectSection;
@@ -1032,44 +1020,6 @@ export function SettingsPanel({
 			...autoCaptionSettings,
 			...partial,
 		});
-	};
-
-	useEffect(() => {
-		let cancelled = false;
-		void window.electronAPI
-			.getExperimentalUpdatesEnabled()
-			.then((enabled) => {
-				if (!cancelled) setExperimentalUpdatesEnabled(enabled);
-			})
-			.catch((error) => {
-				console.error("Failed to load experimental updates preference:", error);
-			});
-		return () => {
-			cancelled = true;
-		};
-	}, []);
-
-	const updateExperimentalUpdatesPreference = async (enabled: boolean) => {
-		const previousValue = experimentalUpdatesEnabled;
-		setExperimentalUpdatesEnabled(enabled);
-		setSavingExperimentalUpdates(true);
-		try {
-			const result = await window.electronAPI.setExperimentalUpdatesEnabled(enabled);
-			setExperimentalUpdatesEnabled(result.enabled);
-			if (!result.success) {
-				toast.error(
-					result.error ||
-						tSettings("updates.saveFailed", "Failed to change the update channel."),
-				);
-			}
-		} catch (error) {
-			setExperimentalUpdatesEnabled(previousValue);
-			toast.error(
-				`${tSettings("updates.saveFailed", "Failed to change the update channel.")} ${String(error)}`,
-			);
-		} finally {
-			setSavingExperimentalUpdates(false);
-		}
 	};
 
 	useEffect(() => {
@@ -2249,11 +2199,7 @@ export function SettingsPanel({
 	const effectSectionContent = (() => {
 		const settingsSectionContent = (
 			<SettingsSections
-				categories={
-					advanced
-						? ["general", "permissions", "motion", "advanced"]
-						: ["general", "permissions", "motion"]
-				}
+				categories={["general", "permissions", "motion"]}
 			>
 				<SettingsCategory category="permissions">
 					<RecordingPermissionsSettings />
@@ -2300,32 +2246,6 @@ export function SettingsPanel({
 							</SelectContent>
 						</Select>
 					</SettingsRow>
-				</SettingsCategory>
-				<SettingsCategory category="advanced">
-					{advanced && (
-						<section className="flex flex-col gap-4">
-							<SectionLabel>{tSettings("updates.title", "Updates")}</SectionLabel>
-							<SettingsRow
-								title={tSettings("updates.experimental", "Experimental updates")}
-								description={tSettings(
-									"updates.experimentalDescription",
-									"This is the front line of user testing - highly experimental so expect bugs",
-								)}
-							>
-								<Switch
-									checked={experimentalUpdatesEnabled}
-									disabled={savingExperimentalUpdates}
-									onCheckedChange={(enabled) =>
-										void updateExperimentalUpdatesPreference(enabled)
-									}
-									aria-label={tSettings(
-										"updates.experimental",
-										"Experimental updates",
-									)}
-								/>
-							</SettingsRow>
-						</section>
-					)}
 				</SettingsCategory>
 				<SettingsCategory category="motion">
 					<section className="flex flex-col gap-6">
@@ -2381,182 +2301,6 @@ export function SettingsPanel({
 							{t("editor.keyboardShortcuts.customize")}
 						</Button>
 					</SettingsRow>
-				</SettingsCategory>
-				<SettingsCategory category="advanced">
-					{advanced && showDevMotionControls ? (
-						<section className="flex flex-col gap-4 rounded-xl border border-separator bg-surface-secondary p-3">
-							<div className="flex items-center justify-between gap-3">
-								<div>
-									<SectionLabel>
-										{tSettings("effects.devSection", "Dev")}
-									</SectionLabel>
-									<div className="mt-0.5 text-xs text-muted-foreground">
-										{tSettings(
-											"effects.devSectionHint",
-											"Temporary testing controls for native capture and motion tuning.",
-										)}
-									</div>
-								</div>
-								<span className="rounded-full bg-accent-soft px-2 py-0.5 text-xs font-medium uppercase tracking-wider text-accent">
-									DEV
-								</span>
-							</div>
-
-							<div className="rounded-lg border border-foreground/10 bg-background/60 px-3 py-3">
-								<div className="flex items-start justify-between gap-3">
-									<div>
-										<div className="text-sm font-medium text-foreground">
-											{tSettings(
-												"effects.nativeCaptureWarningTester",
-												"Native capture warning",
-											)}
-										</div>
-										<div className="mt-0.5 text-xs text-muted-foreground">
-											{nativeCaptureUnavailableSession
-												? tSettings(
-														"effects.nativeCaptureWarningTesterUnavailable",
-														"This project is currently marked as native capture unavailable.",
-													)
-												: tSettings(
-														"effects.nativeCaptureWarningTesterAvailable",
-														"This project is not marked as unsupported, but you can still open the modal for UI testing.",
-													)}
-										</div>
-									</div>
-									<Button
-										type="button"
-										variant="outline"
-										size="sm"
-										onClick={() => onOpenNativeCaptureUnavailableModal?.()}
-										className="h-8 shrink-0"
-									>
-										{tSettings(
-											"effects.openNativeCaptureWarning",
-											"Open warning",
-										)}
-									</Button>
-								</div>
-							</div>
-
-							<div className="space-y-1.5 rounded-lg border border-foreground/10 bg-background/60 px-3 py-3">
-								<div>
-									<div className="text-sm font-medium text-foreground">
-										{tSettings(
-											"effects.cameraDebugTuning",
-											"Camera Debug Tuning",
-										)}
-									</div>
-									<div className="mt-0.5 text-xs text-muted-foreground">
-										{tSettings(
-											"effects.cameraDebugTuningHint",
-											"Development-only spring tuning controls for camera motion.",
-										)}
-									</div>
-								</div>
-								<SliderControl
-									label={tSettings(
-										"effects.cameraSpringStiffnessMultiplier",
-										"Camera stiffness",
-									)}
-									value={cameraSpringStiffnessMultiplier}
-									min={0.25}
-									max={3}
-									step={0.01}
-									onChange={(value) =>
-										onCameraSpringStiffnessMultiplierChange?.(value)
-									}
-									formatValue={(value) => `${value.toFixed(2)}×`}
-								/>
-								<SliderControl
-									label={tSettings(
-										"effects.cameraSpringDampingMultiplier",
-										"Camera damping",
-									)}
-									value={cameraSpringDampingMultiplier}
-									min={0.25}
-									max={3}
-									step={0.01}
-									onChange={(value) =>
-										onCameraSpringDampingMultiplierChange?.(value)
-									}
-									formatValue={(value) => `${value.toFixed(2)}×`}
-								/>
-								<SliderControl
-									label={tSettings(
-										"effects.cameraSpringMassMultiplier",
-										"Camera mass",
-									)}
-									value={cameraSpringMassMultiplier}
-									min={0.25}
-									max={3}
-									step={0.01}
-									onChange={(value) =>
-										onCameraSpringMassMultiplierChange?.(value)
-									}
-									formatValue={(value) => `${value.toFixed(2)}×`}
-								/>
-							</div>
-
-							<div className="space-y-1.5 rounded-lg border border-foreground/10 bg-background/60 px-3 py-3">
-								<div>
-									<div className="text-sm font-medium text-foreground">
-										{tSettings(
-											"effects.cursorDebugTuning",
-											"Cursor Debug Tuning",
-										)}
-									</div>
-									<div className="mt-0.5 text-xs text-muted-foreground">
-										{tSettings(
-											"effects.cursorDebugTuningHint",
-											"Development-only spring tuning controls.",
-										)}
-									</div>
-								</div>
-								<SliderControl
-									label={tSettings(
-										"effects.cursorSpringStiffnessMultiplier",
-										"Spring stiffness",
-									)}
-									value={cursorSpringStiffnessMultiplier}
-									min={0.25}
-									max={3}
-									step={0.01}
-									onChange={(value) =>
-										onCursorSpringStiffnessMultiplierChange?.(value)
-									}
-									formatValue={(value) => `${value.toFixed(2)}×`}
-								/>
-								<SliderControl
-									label={tSettings(
-										"effects.cursorSpringDampingMultiplier",
-										"Spring damping",
-									)}
-									value={cursorSpringDampingMultiplier}
-									min={0.25}
-									max={3}
-									step={0.01}
-									onChange={(value) =>
-										onCursorSpringDampingMultiplierChange?.(value)
-									}
-									formatValue={(value) => `${value.toFixed(2)}×`}
-								/>
-								<SliderControl
-									label={tSettings(
-										"effects.cursorSpringMassMultiplier",
-										"Spring mass",
-									)}
-									value={cursorSpringMassMultiplier}
-									min={0.25}
-									max={3}
-									step={0.01}
-									onChange={(value) =>
-										onCursorSpringMassMultiplierChange?.(value)
-									}
-									formatValue={(value) => `${value.toFixed(2)}×`}
-								/>
-							</div>
-						</section>
-					) : null}
 				</SettingsCategory>
 			</SettingsSections>
 		);

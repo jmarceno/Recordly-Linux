@@ -50,7 +50,6 @@ type NativeStaticLayoutChunkMetric = {
 		| "cuda-overlay"
 		| "cuda-scale-cpu-pad"
 		| "cuda-static-composite"
-		| "nvidia-cuda-compositor"
 		| "windows-d3d11-compositor";
 	elapsedMs: number;
 	outputBytes: number;
@@ -89,18 +88,6 @@ type NativeVideoMetadataProbe = {
 	hasAudio: boolean;
 	audioCodec?: string;
 	audioSampleRate?: number;
-};
-type NativeExportCapabilities = {
-	platform: NodeJS.Platform;
-	nvidiaCuda: {
-		available: boolean;
-		skipReason: string | null;
-		hasNvidiaGpu: boolean | null;
-		hasWrapper: boolean;
-		explicitEnabled: boolean;
-		explicitDisabled: boolean;
-		userOptInRequired: boolean;
-	};
 };
 type ExportHardwareInfo = {
 	platform: NodeJS.Platform;
@@ -283,13 +270,6 @@ contextBridge.exposeInMainWorld("electronAPI", {
 			error?: string;
 		}>;
 	},
-	getNativeExportCapabilities: () => {
-		return ipcRenderer.invoke("get-native-export-capabilities") as Promise<{
-			success: boolean;
-			capabilities?: NativeExportCapabilities;
-			error?: string;
-		}>;
-	},
 	getExportHardwareInfo: () => {
 		return ipcRenderer.invoke("get-export-hardware-info") as Promise<{
 			success: boolean;
@@ -357,7 +337,6 @@ contextBridge.exposeInMainWorld("electronAPI", {
 		}>;
 		chunkDurationSec?: number;
 		experimentalWindowsGpuCompositor?: boolean;
-		experimentalNvidiaCudaExport?: boolean;
 		audioOptions?: {
 			audioMode?: "none" | "copy-source" | "trim-source" | "edited-track";
 			audioSourcePath?: string | null;
@@ -941,90 +920,6 @@ contextBridge.exposeInMainWorld("electronAPI", {
 	},
 	openProjectsDirectory: () => {
 		return ipcRenderer.invoke("open-projects-directory");
-	},
-	installDownloadedUpdate: () => {
-		return ipcRenderer.invoke("install-downloaded-update");
-	},
-	downloadAvailableUpdate: (installAfterDownload?: boolean) => {
-		return ipcRenderer.invoke("download-available-update", installAfterDownload);
-	},
-	deferDownloadedUpdate: (delayMs?: number) => {
-		return ipcRenderer.invoke("defer-downloaded-update", delayMs);
-	},
-	dismissUpdateToast: () => {
-		return ipcRenderer.invoke("dismiss-update-toast");
-	},
-	skipUpdateVersion: () => {
-		return ipcRenderer.invoke("skip-update-version");
-	},
-	getCurrentUpdateToastPayload: () => {
-		return ipcRenderer.invoke("get-current-update-toast-payload");
-	},
-	getUpdateStatusSummary: () => {
-		return ipcRenderer.invoke("get-update-status-summary");
-	},
-	getExperimentalUpdatesEnabled: () => {
-		return ipcRenderer.invoke("get-experimental-updates-enabled");
-	},
-	setExperimentalUpdatesEnabled: (enabled: boolean) => {
-		return ipcRenderer.invoke("set-experimental-updates-enabled", enabled);
-	},
-	previewUpdateToast: () => {
-		return ipcRenderer.invoke("preview-update-toast");
-	},
-	checkForAppUpdates: () => {
-		return ipcRenderer.invoke("check-for-app-updates");
-	},
-	onUpdateToastStateChanged: (
-		callback: (
-			payload: {
-				version: string;
-				detail: string;
-				phase: "available" | "downloading" | "ready" | "error";
-				delayMs: number;
-				isPreview?: boolean;
-				progressPercent?: number;
-				transferredBytes?: number;
-				totalBytes?: number;
-				remainingBytes?: number;
-				bytesPerSecond?: number;
-				primaryAction?: "install-and-restart" | "retry-check";
-			} | null,
-		) => void,
-	) => {
-		const listener = (
-			_event: Electron.IpcRendererEvent,
-			payload: {
-				version: string;
-				detail: string;
-				phase: "available" | "downloading" | "ready" | "error";
-				delayMs: number;
-				isPreview?: boolean;
-				progressPercent?: number;
-				transferredBytes?: number;
-				totalBytes?: number;
-				remainingBytes?: number;
-				bytesPerSecond?: number;
-				primaryAction?: "install-and-restart" | "retry-check";
-			} | null,
-		) => callback(payload);
-		ipcRenderer.on("update-toast-state", listener);
-		return () => ipcRenderer.removeListener("update-toast-state", listener);
-	},
-	onUpdateReadyToast: (
-		callback: (payload: {
-			version: string;
-			detail: string;
-			delayMs: number;
-			isPreview?: boolean;
-		}) => void,
-	) => {
-		const listener = (
-			_event: Electron.IpcRendererEvent,
-			payload: { version: string; detail: string; delayMs: number; isPreview?: boolean },
-		) => callback(payload);
-		ipcRenderer.on("update-ready-toast", listener);
-		return () => ipcRenderer.removeListener("update-ready-toast", listener);
 	},
 	onMenuLoadProject: (callback: () => void) => {
 		const listener = () => callback();

@@ -8,7 +8,6 @@ import type {
 	ExportEncodingMode,
 	ExportFormat,
 	ExportMp4FrameRate,
-	ExportPipelineModel,
 	ExportQuality,
 	GifFrameRate,
 	GifSizePreset,
@@ -24,10 +23,6 @@ interface ExportSettingsMenuProps {
 	onExportEncodingModeChange?: (encodingMode: ExportEncodingMode) => void;
 	mp4FrameRate: ExportMp4FrameRate;
 	onMp4FrameRateChange?: (frameRate: ExportMp4FrameRate) => void;
-	exportPipelineModel?: ExportPipelineModel;
-	experimentalNvidiaCudaExport?: boolean;
-	onExperimentalNvidiaCudaExportChange?: (enabled: boolean) => void;
-	nvidiaCudaExportAvailable?: boolean;
 	showCaptionSidecarOption?: boolean;
 	includeCaptionSidecar?: boolean;
 	onIncludeCaptionSidecarChange?: (enabled: boolean) => void;
@@ -105,10 +100,6 @@ export function ExportSettingsMenu({
 	onExportEncodingModeChange,
 	mp4FrameRate,
 	onMp4FrameRateChange,
-	exportPipelineModel = "modern",
-	experimentalNvidiaCudaExport = false,
-	onExperimentalNvidiaCudaExportChange,
-	nvidiaCudaExportAvailable = false,
 	showCaptionSidecarOption = false,
 	includeCaptionSidecar = false,
 	onIncludeCaptionSidecarChange,
@@ -127,7 +118,6 @@ export function ExportSettingsMenu({
 	linkMode = false,
 }: ExportSettingsMenuProps) {
 	const tSettings = useScopedT("settings");
-	const isLegacyModel = exportPipelineModel === "legacy";
 
 	return (
 		<Card className={className}>
@@ -207,14 +197,6 @@ export function ExportSettingsMenu({
 								label: String(value),
 							}))}
 						/>
-						{!isLegacyModel && nvidiaCudaExportAvailable && (
-							<Switch
-								checked={experimentalNvidiaCudaExport}
-								onCheckedChange={onExperimentalNvidiaCudaExportChange}
-							>
-								<Label>{tSettings("export.nvidiaCuda.title", "NVIDIA CUDA")}</Label>
-							</Switch>
-						)}
 						{showCaptionSidecarOption && (
 							<div>
 								<Switch

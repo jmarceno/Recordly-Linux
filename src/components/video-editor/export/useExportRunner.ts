@@ -46,8 +46,6 @@ export function useExportRunner(input: ExportRunnerInput) {
 				effectiveShowCursor,
 				ensureSupportedMp4SourceDimensions,
 				captionSidecarPayload,
-				experimentalNvidiaCudaExport,
-				nvidiaCudaExportAvailable,
 				remountPreview,
 			} = inputRef.current;
 			const { shadowIntensity, padding } = appearance;
@@ -239,7 +237,6 @@ export function useExportRunner(input: ExportRunnerInput) {
 					const {
 						pipelineModel,
 						useExperimentalNativeExport,
-						useExperimentalNvidiaCudaExport,
 						backendPreference,
 					} = resolveMp4ExportRouting({
 						smokeExportConfig: {
@@ -251,8 +248,6 @@ export function useExportRunner(input: ExportRunnerInput) {
 						settings,
 						exportPipelineModel,
 						exportBackendPreference,
-						experimentalNvidiaCudaExport,
-						nvidiaCudaExportAvailable,
 					});
 					const supportedSourceDimensions = await ensureSupportedMp4SourceDimensions(
 						selectedMp4FrameRate,
@@ -297,7 +292,6 @@ export function useExportRunner(input: ExportRunnerInput) {
 						preferredEncoderPath: supportedSourceDimensions.encoderPath,
 						preferredRenderBackend: smokeExportConfig.renderBackend,
 						experimentalNativeExport: useExperimentalNativeExport,
-						experimentalNvidiaCudaExport: useExperimentalNvidiaCudaExport,
 						maxEncodeQueue: smokeExportConfig.maxEncodeQueue,
 						maxDecodeQueue: smokeExportConfig.maxDecodeQueue,
 						maxPendingFrames: smokeExportConfig.maxPendingFrames,

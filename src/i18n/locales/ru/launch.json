@@ -77,20 +77,5 @@
 		"microphoneDenied": "Нет доступа к микрофону. Запись продолжится без вашего голоса.",
 		"failedToStart": "Не удалось начать запись: {{error}}",
 		"failedToStartGeneric": "Не удалось начать запись"
-	},
-	"updateToast": {
-		"availableTitle": "Доступно обновление",
-		"experimentalAvailableTitle": "Доступно экспериментальное обновление",
-		"experimentalDescription": "Вы включили экспериментальные обновления, поэтому можете протестировать последнее обновление Recordly до его широкого выпуска.",
-		"downloadingTitle": "Загрузка обновления",
-		"readyTitle": "Готово к перезапуску",
-		"checkErrorTitle": "Не удалось проверить обновления",
-		"downloadErrorTitle": "Не удалось загрузить обновление",
-		"experimentalBadge": "Экспериментальное",
-		"previewBadge": "Предпросмотр",
-		"notNow": "Не сейчас",
-		"updateNow": "Обновить сейчас",
-		"restartToUpdate": "Перезапустить для обновления",
-		"tryAgain": "Повторить"
 	}
 }

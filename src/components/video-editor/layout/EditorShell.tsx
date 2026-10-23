@@ -46,9 +46,6 @@ type Props = {
 	settingsPanelProps: ComponentProps<typeof SettingsPanel>;
 	headerLeftControlsPaddingClass: string;
 	hasCaptionsForSidecar: boolean;
-	nvidiaCudaExportAvailable: boolean;
-	experimentalNvidiaCudaExport: boolean;
-	setExperimentalNvidiaCudaExport: (enabled: boolean) => void;
 	effectiveShowCursor: boolean;
 	previewAspectRatioValue: number;
 };
@@ -70,9 +67,6 @@ export function EditorShell(props: Props) {
 		settingsPanelProps,
 		headerLeftControlsPaddingClass,
 		hasCaptionsForSidecar,
-		nvidiaCudaExportAvailable,
-		experimentalNvidiaCudaExport,
-		setExperimentalNvidiaCudaExport,
 		effectiveShowCursor,
 		previewAspectRatioValue,
 	} = props;
@@ -213,9 +207,6 @@ export function EditorShell(props: Props) {
 				exportDimensions={exportDimensions}
 				exportStatus={exportStatus}
 				hasCaptionsForSidecar={hasCaptionsForSidecar}
-				nvidiaCudaExportAvailable={nvidiaCudaExportAvailable}
-				experimentalNvidiaCudaExport={experimentalNvidiaCudaExport}
-				setExperimentalNvidiaCudaExport={setExperimentalNvidiaCudaExport}
 				handleOpenExportDropdown={dialogActions.handleOpenExportDropdown}
 				handleExportDropdownClose={dialogActions.handleExportDropdownClose}
 				handleCancelExport={dialogActions.handleCancelExport}

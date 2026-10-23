@@ -252,11 +252,5 @@
 		"micLabel": "마이크 소스",
 		"mixedLabel": "소스",
 		"deleteRegion": "오디오 삭제"
-	},
-	"updates": {
-		"experimentalDescription": "실험적 업데이트를 선택했으므로 Recordly의 최신 업데이트가 널리 제공되기 전에 먼저 테스트해 볼 수 있습니다.",
-		"title": "업데이트",
-		"experimental": "실험적 업데이트",
-		"saveFailed": "업데이트 채널을 변경하지 못했습니다."
 	}
 }

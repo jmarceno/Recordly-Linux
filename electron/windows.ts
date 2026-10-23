@@ -46,17 +46,12 @@ let hudOverlayWebcamPreviewVisible = false;
 let countdownWindow: BrowserWindow | null = null;
 let capturePickerWindows: BrowserWindow[] = [];
 let areaRecordingBorderWindow: BrowserWindow | null = null;
-let updateToastWindow: BrowserWindow | null = null;
-let hudWasVisibleBeforeUpdateToast = false;
 let hudMenuWindow: BrowserWindow | null = null;
 let hudMenuPendingId: string | null = null;
 let hudMenuCurrentId: string | null = null;
 let hudMenuReady = false;
 
 const HUD_OVERLAY_SETTINGS_FILE = path.join(USER_DATA_PATH, "hud-overlay-settings.json");
-const HUD_EDGE_MARGIN_DIP = 16;
-const UPDATE_TOAST_WIDTH = 420;
-const UPDATE_TOAST_HEIGHT = 172;
 /** Shows a capture picker that never reported ready. */
 const CAPTURE_PICKER_READY_TIMEOUT_MS = 1500;
 
@@ -193,6 +188,37 @@ export function beginHudCaptureProtection(): void {
 	hudCaptureStarting = true;
 	reassertHudOverlayCaptureProtection();
 }
+
+// Wayland compositors give no way to keep a window out of a screen capture, so
+// on Linux the HUD is hidden for the whole recording and comes back on stop.
+// The tray menu stays available to stop the recording or show the controls.
+let hudHiddenForCapture = false;
+
+export async function hideHudForCapture(): Promise<void> {
+	if (process.platform !== "linux") {
+		return;
+	}
+	hideHudMenu();
+	const hud = getHudOverlayWindow();
+	if (!hud || !hud.isVisible()) {
+		return;
+	}
+	hudHiddenForCapture = true;
+	hud.hide();
+	// Give the compositor a few frames to unmap the window before capture starts.
+	await new Promise((resolve) => setTimeout(resolve, 250));
+}
+
+export function restoreHudAfterCapture(): void {
+	if (!hudHiddenForCapture) {
+		return;
+	}
+	hudHiddenForCapture = false;
+	const hud = getHudOverlayWindow();
+	if (hud && !hud.isVisible()) {
+		hud.show();
+	}
+}
 ipcMain.handle("finish-recording-startup", () => {
 	hudCaptureStarting = false;
 	reassertHudOverlayCaptureProtection();
@@ -259,49 +285,10 @@ function applyHudOverlayBounds() {
 	}
 	hudOverlayWindow.setBounds(getHudOverlayBounds(), false);
 
-	positionUpdateToastWindow();
 	if (!hudOverlayWindow.isVisible()) {
 		return;
 	}
 	hudOverlayWindow.moveTop();
-}
-
-function getUpdateToastBounds() {
-	const hudWindow = getHudOverlayWindow();
-	if (hudWindow) {
-		const hudBounds = hudWindow.getBounds();
-		const display = getScreen().getDisplayMatching(hudBounds);
-		const { workArea } = display;
-		const x = Math.round(workArea.x + (workArea.width - UPDATE_TOAST_WIDTH) / 2);
-		const y = Math.round(
-			workArea.y + workArea.height - UPDATE_TOAST_HEIGHT - HUD_EDGE_MARGIN_DIP,
-		);
-
-		return {
-			x,
-			y,
-			width: UPDATE_TOAST_WIDTH,
-			height: UPDATE_TOAST_HEIGHT,
-		};
-	}
-
-	const primaryDisplay = getScreen().getPrimaryDisplay();
-	const { workArea } = primaryDisplay;
-	return {
-		x: Math.round(workArea.x + (workArea.width - UPDATE_TOAST_WIDTH) / 2),
-		y: Math.round(workArea.y + workArea.height - UPDATE_TOAST_HEIGHT - HUD_EDGE_MARGIN_DIP),
-		width: UPDATE_TOAST_WIDTH,
-		height: UPDATE_TOAST_HEIGHT,
-	};
-}
-
-function positionUpdateToastWindow() {
-	if (!updateToastWindow || updateToastWindow.isDestroyed()) {
-		return;
-	}
-
-	updateToastWindow.setBounds(getUpdateToastBounds(), false);
-	updateToastWindow.moveTop();
 }
 
 function setHudOverlayFallbackExpanded(expanded: boolean) {
@@ -326,7 +313,6 @@ function setHudOverlayFallbackExpanded(expanded: boolean) {
 		expanded,
 	);
 	hudOverlayWindow.setBounds(nextBounds, false);
-	positionUpdateToastWindow();
 	if (hudOverlayWindow.isVisible()) {
 		hudOverlayWindow.moveTop();
 	}
@@ -440,6 +426,11 @@ ipcMain.on("hud-overlay-drag", (_event, phase: string, screenX: number, screenY:
 
 ipcMain.on("hud-overlay-hide", () => {
 	if (hudOverlayWindow && !hudOverlayWindow.isDestroyed()) {
+		// The tray "Open" entry brings it back on Linux.
+		if (process.platform === "linux") {
+			hudOverlayWindow.hide();
+			return;
+		}
 		hudOverlayWindow.minimize();
 	}
 });
@@ -548,14 +539,6 @@ export function createHudOverlayWindow(): BrowserWindow {
 
 	const showHudWindow = () => {
 		if (hasShownHudWindow || win.isDestroyed()) {
-			return;
-		}
-		if (
-			updateToastWindow &&
-			!updateToastWindow.isDestroyed() &&
-			updateToastWindow.isVisible()
-		) {
-			hudWasVisibleBeforeUpdateToast = true;
 			return;
 		}
 		hasShownHudWindow = true;
@@ -867,6 +850,9 @@ export function reassertHudOverlayMousePassthrough(): void {
 export function setHudOverlayRecordingActive(recording: boolean): void {
 	hudCaptureStarting = false;
 	hudOverlayRecordingActive = Boolean(recording);
+	if (!hudOverlayRecordingActive) {
+		restoreHudAfterCapture();
+	}
 	notifyEditorMode();
 	hudOverlayFallbackExpanded = false;
 	applyHudOverlayBounds();
@@ -875,114 +861,6 @@ export function setHudOverlayRecordingActive(recording: boolean): void {
 	// make the visible HUD controls interactive when the pointer reaches them,
 	// while transparent parts never block the recorded application.
 	setHudOverlayMousePassthrough(true);
-}
-
-export function createUpdateToastWindow(): BrowserWindow {
-	const initialBounds = getUpdateToastBounds();
-
-	const win = new BrowserWindow({
-		width: initialBounds.width,
-		height: initialBounds.height,
-		x: initialBounds.x,
-		y: initialBounds.y,
-		frame: false,
-		transparent: true,
-		resizable: false,
-		alwaysOnTop: true,
-		skipTaskbar: true,
-		hasShadow: false,
-		show: false,
-		focusable: true,
-		backgroundColor: "#00000000",
-		webPreferences: {
-			preload: path.join(electronWindowsDir, "preload.mjs"),
-			nodeIntegration: false,
-			contextIsolation: true,
-			backgroundThrottling: false,
-		},
-	});
-
-	if (process.platform === "darwin") {
-		win.setAlwaysOnTop(true, "status");
-	}
-
-	win.setVisibleOnAllWorkspaces(true, {
-		visibleOnFullScreen: true,
-		// Keep Recordly a foreground application so macOS does not temporarily
-		// remove its Dock icon while showing an overlay window.
-		skipTransformProcessType: process.platform === "darwin",
-	});
-	updateToastWindow = win;
-
-	win.on("closed", () => {
-		if (updateToastWindow === win) {
-			updateToastWindow = null;
-		}
-		restoreHudAfterUpdateToast();
-	});
-
-	if (VITE_DEV_SERVER_URL) {
-		win.loadURL(VITE_DEV_SERVER_URL + "?windowType=update-toast");
-	} else {
-		win.loadFile(path.join(RENDERER_DIST, "index.html"), {
-			query: { windowType: "update-toast" },
-		});
-	}
-
-	return win;
-}
-
-export function getUpdateToastWindow(): BrowserWindow | null {
-	return updateToastWindow && !updateToastWindow.isDestroyed() ? updateToastWindow : null;
-}
-
-export function showUpdateToastWindow(): BrowserWindow {
-	const win = getUpdateToastWindow() ?? createUpdateToastWindow();
-	const hud = getHudOverlayWindow();
-	if (!win.isVisible()) {
-		hudWasVisibleBeforeUpdateToast = Boolean(hud?.isVisible());
-	}
-	if (hud?.isVisible()) {
-		hud.hide();
-	}
-	positionUpdateToastWindow();
-	if (!win.isVisible()) {
-		if (process.platform === "win32") {
-			win.show();
-		} else {
-			win.showInactive();
-		}
-	}
-	win.moveTop();
-
-	return win;
-}
-
-function restoreHudAfterUpdateToast(): void {
-	if (!hudWasVisibleBeforeUpdateToast) {
-		return;
-	}
-
-	hudWasVisibleBeforeUpdateToast = false;
-	const hud = getHudOverlayWindow();
-	if (!hud) {
-		return;
-	}
-
-	if (process.platform === "win32") {
-		hud.showInactive();
-	} else {
-		hud.show();
-	}
-	hud.moveTop();
-	setHudOverlayMousePassthrough(hudOverlayIgnoringMouse);
-}
-
-export function hideUpdateToastWindow(): void {
-	if (updateToastWindow && !updateToastWindow.isDestroyed()) {
-		updateToastWindow.hide();
-	}
-	restoreHudAfterUpdateToast();
 }
 
 function loadPackagedEditorWindow(win: BrowserWindow) {

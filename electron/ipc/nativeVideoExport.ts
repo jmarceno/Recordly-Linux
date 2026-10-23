@@ -76,7 +76,6 @@ export type NativeStaticLayoutBackend =
 	| "cuda-overlay"
 	| "cuda-scale-cpu-pad"
 	| "cuda-static-composite"
-	| "nvidia-cuda-compositor"
 	| "windows-d3d11-compositor";
 
 export interface NativeStaticLayoutExportArgsConfig {

@@ -1,10 +1,4 @@
 {
-	"updates": {
-		"title": "Updates",
-		"experimental": "Experimental updates",
-		"experimentalDescription": "You've opted into experimental updates so you have the choice to test the latest update of Recordly before it's widely available.",
-		"saveFailed": "Failed to change the update channel."
-	},
 	"zoom": {
 		"level": "Zoom Level",
 		"selectRegion": "Select a zoom region to adjust",

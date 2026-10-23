@@ -2,18 +2,18 @@ import { describe, expect, it } from "vitest";
 import { getHudOverlayTaskbarOptions } from "./hudOverlayWindowOptions";
 
 describe("getHudOverlayTaskbarOptions", () => {
-	it("keeps a focusable HUD in the Windows taskbar", () => {
-		expect(getHudOverlayTaskbarOptions("win32")).toEqual({
+	it.each([
+		"win32",
+		"linux",
+	] as const)("keeps a focusable HUD in the taskbar on %s", (platform) => {
+		expect(getHudOverlayTaskbarOptions(platform)).toEqual({
 			skipTaskbar: false,
 			focusable: true,
 		});
 	});
 
-	it.each([
-		"darwin",
-		"linux",
-	] as const)("keeps the HUD non-focusable and out of the taskbar on %s", (platform) => {
-		expect(getHudOverlayTaskbarOptions(platform)).toEqual({
+	it("keeps the HUD non-focusable and out of the taskbar on darwin", () => {
+		expect(getHudOverlayTaskbarOptions("darwin")).toEqual({
 			skipTaskbar: true,
 			focusable: false,
 		});

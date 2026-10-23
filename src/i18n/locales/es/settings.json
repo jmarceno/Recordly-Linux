@@ -252,11 +252,5 @@
 		"micLabel": "Micrófono",
 		"mixedLabel": "Fuente",
 		"deleteRegion": "Eliminar audio"
-	},
-	"updates": {
-		"experimentalDescription": "Has activado las actualizaciones experimentales, así que puedes probar la actualización más reciente de Recordly antes de que esté disponible para todos.",
-		"title": "Actualizaciones",
-		"experimental": "Actualizaciones experimentales",
-		"saveFailed": "No se pudo cambiar el canal de actualización."
 	}
 }

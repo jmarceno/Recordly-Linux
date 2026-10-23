@@ -408,9 +408,7 @@ export class ModernVideoExporter {
 					shouldPreferNativeStaticLayoutBeforeBreeze(runtimePlatform, backendPreference);
 				const shouldTryNativeStaticLayout =
 					!nativeFailure &&
-					(backendPreference === "breeze" ||
-						this.config.experimentalNvidiaCudaExport === true ||
-						prefersNativeStaticLayoutBeforeBreeze);
+					(backendPreference === "breeze" || prefersNativeStaticLayoutBeforeBreeze);
 				let shouldDeferNativeEncoderStart = shouldTryNativeStaticLayout;
 				this.lastNativeExportError = nativeFailure;
 
@@ -2576,10 +2574,7 @@ export class ModernVideoExporter {
 				const rawNativePercentage = Number.isFinite(progress.percentage)
 					? Math.max(0, progress.percentage)
 					: 0;
-				if (
-					progress.backend === "nvidia-cuda-compositor" ||
-					progress.backend === "windows-d3d11-compositor"
-				) {
+				if (progress.backend === "windows-d3d11-compositor") {
 					this.encoderName = progress.backend;
 				}
 				if (
@@ -2683,7 +2678,6 @@ export class ModernVideoExporter {
 				timelineSegments,
 				chunkDurationSec: STATIC_LAYOUT_CHUNK_DURATION_SEC,
 				experimentalWindowsGpuCompositor: this.config.experimentalNativeExport === true,
-				experimentalNvidiaCudaExport: this.config.experimentalNvidiaCudaExport === true,
 				audioOptions: {
 					...audioOptions,
 					outputDurationSec: effectiveDuration,

@@ -32,8 +32,6 @@ export type ExportRunnerInput = {
 		options?: { capTo1080p?: boolean },
 	) => Promise<SupportedMp4Dimensions>;
 	captionSidecarPayload?: PendingExportSave["captionSidecar"];
-	experimentalNvidiaCudaExport: boolean;
-	nvidiaCudaExportAvailable: boolean;
 	remountPreview: () => void;
 };
 

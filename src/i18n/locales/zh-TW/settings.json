@@ -252,11 +252,5 @@
 		"micLabel": "麥克風源",
 		"mixedLabel": "源",
 		"deleteRegion": "刪除音訊"
-	},
-	"updates": {
-		"experimentalDescription": "你已選擇接收實驗性更新，因此可以在 Recordly 最新更新廣泛推出之前選擇先行測試。",
-		"title": "更新",
-		"experimental": "實驗性更新",
-		"saveFailed": "無法變更更新頻道。"
 	}
 }

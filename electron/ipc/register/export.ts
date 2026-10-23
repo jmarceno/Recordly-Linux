@@ -19,7 +19,6 @@ import {
 	exportNativeStaticLayoutVideo,
 	flushNativeVideoExportPendingWriteRequests,
 	getExportHardwareInfo,
-	getNativeExportCapabilities,
 	getNativeVideoExportMaxQueuedWriteBytes,
 	getNativeVideoExportSessionError,
 	isHardwareAcceleratedVideoEncoder,
@@ -414,21 +413,6 @@ export function registerExportHandlers() {
 		}
 	});
 
-	ipcMain.handle("get-native-export-capabilities", async () => {
-		try {
-			return {
-				success: true,
-				capabilities: await getNativeExportCapabilities(),
-			};
-		} catch (error) {
-			console.warn("[native-export-capabilities] Failed:", error);
-			return {
-				success: false,
-				error: error instanceof Error ? error.message : String(error),
-			};
-		}
-	});
-
 	ipcMain.handle("get-export-hardware-info", async () => {
 		try {
 			return {
@@ -470,13 +454,11 @@ export function registerExportHandlers() {
 					success: true,
 					tempPath: result.outputPath,
 					encoderName:
-						primaryBackend === "nvidia-cuda-compositor"
-							? "nvidia-cuda-compositor"
-							: primaryBackend === "windows-d3d11-compositor"
-								? "windows-d3d11-compositor"
-								: result.metrics.chunkCount > 1
-									? "chunked-h264-nvenc"
-									: "static-layout-h264-nvenc",
+						primaryBackend === "windows-d3d11-compositor"
+							? "windows-d3d11-compositor"
+							: result.metrics.chunkCount > 1
+								? "chunked-h264-nvenc"
+								: "static-layout-h264-nvenc",
 					metrics: result.metrics,
 				};
 			} catch (error) {

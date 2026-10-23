@@ -45,9 +45,9 @@ export function DashboardSettings({ onImportFile }: { onImportFile: () => Promis
 		<section aria-label="Dashboard settings" className="dashboard-settings max-w-2xl py-10">
 			<h1 className="mb-8 text-lg font-semibold">Settings</h1>
 			<SettingsSections
-				categories={["general", "permissions", "motion", "recording", "files", "advanced"]}
+				categories={["general", "permissions", "motion", "recording", "files"]}
 			>
-				<SettingsCategory category={["general", "permissions", "motion", "advanced"]}>
+				<SettingsCategory category={["general", "permissions", "motion"]}>
 					{settingsContent}
 				</SettingsCategory>
 				<SettingsCategory category="files">
@@ -110,24 +110,6 @@ export function DashboardSettings({ onImportFile }: { onImportFile: () => Promis
 									})
 								}
 							/>
-						</SettingsRow>
-					)}
-				</SettingsCategory>
-				<SettingsCategory category="advanced">
-					{import.meta.env.DEV && (
-						<SettingsRow title="Preview update UI">
-							<Button
-								variant="secondary"
-								size="sm"
-								disabled={busy}
-								onClick={() =>
-									void run(async () => {
-										await window.electronAPI.previewUpdateToast();
-									})
-								}
-							>
-								Preview
-							</Button>
 						</SettingsRow>
 					)}
 				</SettingsCategory>

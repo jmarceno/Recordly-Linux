@@ -54,22 +54,16 @@ vi.mock("node:child_process", () => ({
 
 import { app } from "electron";
 import {
-	buildExperimentalNvidiaCudaStaticLayoutArgs,
 	buildExperimentalWindowsGpuStaticLayoutArgs,
 	buildNativeStaticLayoutSourceProxyArgs,
 	buildNativeStaticLayoutTimelineSegments,
 	buildNativeVideoAudioMuxArgs,
 	canCopyAudioCodecIntoMp4,
-	getExperimentalNvidiaCudaExportSkipReason,
 	getExportHardwareInfo,
-	getNativeExportCapabilities,
 	getNativeGpuCompositorStallTimeoutMs,
 	getNativeStaticLayoutSourceProxyBitrate,
-	getNvidiaCudaAudioExportSkipReason,
-	getNvidiaCudaAutoStallTimeoutMs,
 	hasNativeStaticLayoutProgressAdvanced,
 	hasNvidiaGpuDeviceInGpuInfo,
-	mapNvidiaCudaWrapperProgressPercentage,
 	muxExportedVideoAudioBuffer,
 	type NativeStaticLayoutExportOptions,
 	normalizeNativeStaticLayoutBackground,
@@ -78,15 +72,12 @@ import {
 	parseFfmpegProgressLineSeconds,
 	parseNativeVideoMetadataProbeOutput,
 	parseNativeVideoStreamStatsProbeOutput,
-	parseNvidiaCudaExportSummary,
 	parseWindowsGpuExportProgressLine,
 	parseWindowsGpuExportSummary,
-	resolveExperimentalNvidiaCudaExportScriptPath,
 	sanitizeExportGpuInfo,
 	shouldCreateNativeStaticLayoutSourceProxy,
 	validateNativeStaticLayoutSourceProxyMetadata,
 	validateNativeVideoStreamStats,
-	validateNvidiaCudaExportSummary,
 	validateWindowsGpuExportSummary,
 } from "./native-video";
 
@@ -97,33 +88,7 @@ const electronAppMock = app as unknown as {
 	isPackaged: boolean;
 };
 
-function withNvidiaCudaAudioOverride<T>(value: string | undefined, callback: () => T) {
-	const envName = "RECORDLY_NVIDIA_CUDA_ALLOW_AUDIO_EXPORT";
-	const originalValue = process.env[envName];
-	if (value === undefined) {
-		delete process.env[envName];
-	} else {
-		process.env[envName] = value;
-	}
-
-	try {
-		return callback();
-	} finally {
-		if (originalValue === undefined) {
-			delete process.env[envName];
-		} else {
-			process.env[envName] = originalValue;
-		}
-	}
-}
-
-function resetFsAccessMock() {
-	fsMocks.access.mockImplementation(async () => {
-		throw new Error("missing");
-	});
-}
-
-function createNvidiaCudaSkipOptions(
+function createStaticLayoutExportOptions(
 	overrides: Partial<NativeStaticLayoutExportOptions> = {},
 ): NativeStaticLayoutExportOptions {
 	return {
@@ -142,30 +107,6 @@ function createNvidiaCudaSkipOptions(
 		experimentalWindowsGpuCompositor: true,
 		...overrides,
 	};
-}
-
-async function withPackagedCudaCandidate<T>(gpuInfo: unknown, callback: () => Promise<T>) {
-	const envName = "RECORDLY_EXPERIMENTAL_NVIDIA_CUDA_EXPORT";
-	const originalEnv = process.env[envName];
-	const originalIsPackaged = electronAppMock.isPackaged;
-	electronAppMock.isPackaged = true;
-	electronAppMock.getGPUInfo.mockResolvedValue(gpuInfo);
-	fsMocks.access.mockResolvedValue(undefined);
-	delete process.env[envName];
-
-	try {
-		return await callback();
-	} finally {
-		if (originalEnv === undefined) {
-			delete process.env[envName];
-		} else {
-			process.env[envName] = originalEnv;
-		}
-		electronAppMock.isPackaged = originalIsPackaged;
-		electronAppMock.getGPUInfo.mockReset();
-		electronAppMock.getGPUInfo.mockResolvedValue({ gpuDevice: [] });
-		resetFsAccessMock();
-	}
 }
 
 describe("normalizeNativeStaticLayoutBackground", () => {
@@ -218,7 +159,7 @@ describe("native static-layout source proxy", () => {
 	});
 
 	it("builds a CFR H.264 MP4 proxy at visually safe bitrate", () => {
-		const options = createNvidiaCudaSkipOptions({
+		const options = createStaticLayoutExportOptions({
 			inputPath: "recording.webm",
 			bitrate: 22_000_000,
 			durationSec: 30,
@@ -274,74 +215,6 @@ describe("native static-layout source proxy", () => {
 				{ sourceDurationSec: 45 },
 			),
 		).toEqual(["proxy duration 10.000s shorter than expected 45.000s"]);
-	});
-});
-
-describe("getNvidiaCudaAudioExportSkipReason", () => {
-	it("allows video-only CUDA exports by default", () => {
-		withNvidiaCudaAudioOverride(undefined, () => {
-			expect(getNvidiaCudaAudioExportSkipReason(undefined)).toBeNull();
-			expect(getNvidiaCudaAudioExportSkipReason("none")).toBeNull();
-		});
-	});
-
-	it("guards CUDA for audio exports unless explicitly overridden", () => {
-		withNvidiaCudaAudioOverride(undefined, () => {
-			expect(getNvidiaCudaAudioExportSkipReason("copy-source")).toBe(
-				"audio-mode:copy-source",
-			);
-			expect(getNvidiaCudaAudioExportSkipReason("trim-source")).toBe(
-				"audio-mode:trim-source",
-			);
-			expect(getNvidiaCudaAudioExportSkipReason("edited-track")).toBe(
-				"audio-mode:edited-track",
-			);
-		});
-	});
-
-	it("allows CUDA audio exports only for explicit lab overrides", () => {
-		withNvidiaCudaAudioOverride("1", () => {
-			expect(getNvidiaCudaAudioExportSkipReason("copy-source")).toBeNull();
-		});
-	});
-
-	it("allows validated fallback candidates to try CUDA audio exports", () => {
-		withNvidiaCudaAudioOverride(undefined, () => {
-			expect(
-				getNvidiaCudaAudioExportSkipReason("copy-source", {
-					allowValidatedFallbackCandidate: true,
-				}),
-			).toBeNull();
-		});
-	});
-});
-
-describe("getNvidiaCudaAutoStallTimeoutMs", () => {
-	it("only applies the stall guard to active validated CUDA candidates by default", () => {
-		expect(getNvidiaCudaAutoStallTimeoutMs(false)).toBeNull();
-		expect(getNvidiaCudaAutoStallTimeoutMs(true)).toBe(120_000);
-	});
-
-	it("allows the CUDA auto stall guard to be disabled or tuned", () => {
-		const envName = "RECORDLY_NVIDIA_CUDA_AUTO_STALL_TIMEOUT_MS";
-		const originalValue = process.env[envName];
-
-		try {
-			process.env[envName] = "0";
-			expect(getNvidiaCudaAutoStallTimeoutMs(true)).toBeNull();
-
-			process.env[envName] = "5000";
-			expect(getNvidiaCudaAutoStallTimeoutMs(true)).toBe(10_000);
-
-			process.env[envName] = "45000";
-			expect(getNvidiaCudaAutoStallTimeoutMs(true)).toBe(45_000);
-		} finally {
-			if (originalValue === undefined) {
-				delete process.env[envName];
-			} else {
-				process.env[envName] = originalValue;
-			}
-		}
 	});
 });
 
@@ -406,21 +279,6 @@ describe("hasNvidiaGpuDeviceInGpuInfo", () => {
 	});
 });
 
-describe("getNativeExportCapabilities", () => {
-	it("reports NVIDIA CUDA availability when the wrapper and an NVIDIA GPU are present", async () => {
-		const capabilities = await withPackagedCudaCandidate(
-			{ gpuDevice: [{ vendorId: 0x10de, deviceString: "NVIDIA GeForce GTX 1650" }] },
-			() => getNativeExportCapabilities(),
-		);
-
-		expect(capabilities.nvidiaCuda.available).toBe(process.platform === "win32");
-		expect(capabilities.nvidiaCuda.hasWrapper).toBe(process.platform === "win32");
-		expect(capabilities.nvidiaCuda.hasNvidiaGpu).toBe(
-			process.platform === "win32" ? true : null,
-		);
-	});
-});
-
 describe("export hardware diagnostics", () => {
 	it("sanitizes machine and GPU details without exposing raw device identifiers", () => {
 		const hardware = sanitizeExportGpuInfo({
@@ -474,361 +332,10 @@ describe("export hardware diagnostics", () => {
 	});
 });
 
-describe("getExperimentalNvidiaCudaExportSkipReason", () => {
-	it("requires user opt-in before packaged CUDA candidates run", async () => {
-		const reason = await withPackagedCudaCandidate(
-			{ gpuDevice: [{ vendorId: 0x10de, deviceString: "NVIDIA GeForce GTX 1650" }] },
-			() =>
-				getExperimentalNvidiaCudaExportSkipReason(
-					createNvidiaCudaSkipOptions({
-						audioOptions: { audioMode: "copy-source", audioSourcePath: "input.mp4" },
-					}),
-				),
-		);
-
-		expect(reason).toBe(process.platform === "win32" ? "env-disabled" : "not-windows");
-	});
-
-	it("allows user opt-in CUDA candidates when the helper and an NVIDIA GPU are present", async () => {
-		const reason = await withPackagedCudaCandidate(
-			{ gpuDevice: [{ vendorId: 0x10de, deviceString: "NVIDIA GeForce GTX 1650" }] },
-			() =>
-				getExperimentalNvidiaCudaExportSkipReason(
-					createNvidiaCudaSkipOptions({
-						experimentalNvidiaCudaExport: true,
-						audioOptions: { audioMode: "copy-source", audioSourcePath: "input.mp4" },
-					}),
-				),
-		);
-
-		expect(reason).toBe(process.platform === "win32" ? null : "not-windows");
-	});
-
-	it("allows explicit lab CUDA audio exports when forced onto the shared mux path", async () => {
-		const exportEnvName = "RECORDLY_EXPERIMENTAL_NVIDIA_CUDA_EXPORT";
-		const forceEnvName = "RECORDLY_NVIDIA_CUDA_FORCE_VIDEO_ONLY";
-		const allowAudioEnvName = "RECORDLY_NVIDIA_CUDA_ALLOW_AUDIO_EXPORT";
-		const originalExportEnv = process.env[exportEnvName];
-		const originalForceEnv = process.env[forceEnvName];
-		const originalAllowAudioEnv = process.env[allowAudioEnvName];
-		process.env[exportEnvName] = "1";
-		process.env[forceEnvName] = "1";
-		delete process.env[allowAudioEnvName];
-
-		try {
-			const reason = await getExperimentalNvidiaCudaExportSkipReason(
-				createNvidiaCudaSkipOptions({
-					audioOptions: { audioMode: "copy-source", audioSourcePath: "input.mp4" },
-				}),
-			);
-
-			expect(reason).toBe(process.platform === "win32" ? null : "not-windows");
-		} finally {
-			if (originalExportEnv === undefined) {
-				delete process.env[exportEnvName];
-			} else {
-				process.env[exportEnvName] = originalExportEnv;
-			}
-			if (originalForceEnv === undefined) {
-				delete process.env[forceEnvName];
-			} else {
-				process.env[forceEnvName] = originalForceEnv;
-			}
-			if (originalAllowAudioEnv === undefined) {
-				delete process.env[allowAudioEnvName];
-			} else {
-				process.env[allowAudioEnvName] = originalAllowAudioEnv;
-			}
-		}
-	});
-
-	it("does not use packaged auto-candidate audio bypass when CUDA is explicitly enabled", async () => {
-		const exportEnvName = "RECORDLY_EXPERIMENTAL_NVIDIA_CUDA_EXPORT";
-		const forceEnvName = "RECORDLY_NVIDIA_CUDA_FORCE_VIDEO_ONLY";
-		const allowAudioEnvName = "RECORDLY_NVIDIA_CUDA_ALLOW_AUDIO_EXPORT";
-		const originalExportEnv = process.env[exportEnvName];
-		const originalForceEnv = process.env[forceEnvName];
-		const originalAllowAudioEnv = process.env[allowAudioEnvName];
-		const originalIsPackaged = electronAppMock.isPackaged;
-		electronAppMock.isPackaged = true;
-		process.env[exportEnvName] = "1";
-		delete process.env[forceEnvName];
-		delete process.env[allowAudioEnvName];
-
-		try {
-			const reason = await getExperimentalNvidiaCudaExportSkipReason(
-				createNvidiaCudaSkipOptions({
-					audioOptions: { audioMode: "copy-source", audioSourcePath: "input.mp4" },
-				}),
-			);
-
-			expect(reason).toBe(
-				process.platform === "win32" ? "audio-mode:copy-source" : "not-windows",
-			);
-		} finally {
-			if (originalExportEnv === undefined) {
-				delete process.env[exportEnvName];
-			} else {
-				process.env[exportEnvName] = originalExportEnv;
-			}
-			if (originalForceEnv === undefined) {
-				delete process.env[forceEnvName];
-			} else {
-				process.env[forceEnvName] = originalForceEnv;
-			}
-			if (originalAllowAudioEnv === undefined) {
-				delete process.env[allowAudioEnvName];
-			} else {
-				process.env[allowAudioEnvName] = originalAllowAudioEnv;
-			}
-			electronAppMock.isPackaged = originalIsPackaged;
-		}
-	});
-
-	it("skips user opt-in CUDA candidates when Electron reports no NVIDIA GPU", async () => {
-		const reason = await withPackagedCudaCandidate(
-			{ gpuDevice: [{ vendorId: 0x8086, deviceString: "Intel UHD Graphics" }] },
-			() =>
-				getExperimentalNvidiaCudaExportSkipReason(
-					createNvidiaCudaSkipOptions({ experimentalNvidiaCudaExport: true }),
-				),
-		);
-
-		expect(reason).toBe(
-			process.platform === "win32" ? "nvidia-gpu-unavailable" : "not-windows",
-		);
-	});
-
-	it("lets the user opt-in candidate be explicitly disabled", async () => {
-		const reason = await withPackagedCudaCandidate(
-			{ gpuDevice: [{ vendorId: 0x10de, deviceString: "NVIDIA GeForce GTX 1650" }] },
-			async () => {
-				process.env.RECORDLY_EXPERIMENTAL_NVIDIA_CUDA_EXPORT = "0";
-				return getExperimentalNvidiaCudaExportSkipReason(
-					createNvidiaCudaSkipOptions({ experimentalNvidiaCudaExport: true }),
-				);
-			},
-		);
-
-		expect(reason).toBe(process.platform === "win32" ? "env-disabled" : "not-windows");
-	});
-});
-
-describe("resolveExperimentalNvidiaCudaExportScriptPath", () => {
-	it("prefers the packaged app.asar.unpacked CUDA wrapper over the virtual app.asar copy", async () => {
-		const envName = "RECORDLY_NVIDIA_CUDA_EXPORT_SCRIPT";
-		const originalEnv = process.env[envName];
-		const originalResourcesPath = Object.getOwnPropertyDescriptor(process, "resourcesPath");
-		delete process.env[envName];
-
-		try {
-			if (process.platform !== "win32") {
-				expect(await resolveExperimentalNvidiaCudaExportScriptPath()).toBeNull();
-				return;
-			}
-
-			const resourcesPath = "C:\\Recordly\\resources";
-			const unpackedScriptPath =
-				"C:\\Recordly\\resources\\app.asar.unpacked\\electron\\native\\nvidia-cuda-compositor\\run-mp4-pipeline.mjs";
-			const asarScriptPath =
-				"C:\\Recordly\\resources\\app.asar\\electron\\native\\nvidia-cuda-compositor\\run-mp4-pipeline.mjs";
-			Object.defineProperty(process, "resourcesPath", {
-				configurable: true,
-				value: resourcesPath,
-			});
-			electronAppMock.getAppPath.mockReturnValue("C:\\Recordly\\resources\\app.asar");
-			fsMocks.access.mockImplementation(async (candidate: string) => {
-				if (candidate === unpackedScriptPath || candidate === asarScriptPath) {
-					return;
-				}
-				throw new Error(`missing ${candidate}`);
-			});
-
-			expect(await resolveExperimentalNvidiaCudaExportScriptPath()).toBe(unpackedScriptPath);
-		} finally {
-			if (originalEnv === undefined) {
-				delete process.env[envName];
-			} else {
-				process.env[envName] = originalEnv;
-			}
-			if (originalResourcesPath) {
-				Object.defineProperty(process, "resourcesPath", originalResourcesPath);
-			} else {
-				delete (process as NodeJS.Process & { resourcesPath?: string }).resourcesPath;
-			}
-			electronAppMock.getAppPath.mockReset();
-			electronAppMock.getAppPath.mockReturnValue(process.cwd());
-			resetFsAccessMock();
-		}
-	});
-});
-
-describe("buildExperimentalNvidiaCudaStaticLayoutArgs", () => {
-	it("passes output canvas dimensions to the CUDA wrapper", () => {
-		const args = buildExperimentalNvidiaCudaStaticLayoutArgs(
-			createNvidiaCudaSkipOptions({ width: 1020, height: 572 }),
-			"output.mp4",
-			"work",
-		);
-
-		expect(args).toEqual(expect.arrayContaining(["--width", "1020", "--height", "572"]));
-	});
-
-	it("keeps explicit copy-source CUDA audio inline by default", () => {
-		const args = buildExperimentalNvidiaCudaStaticLayoutArgs(
-			createNvidiaCudaSkipOptions({
-				audioOptions: { audioMode: "copy-source", audioSourcePath: "input.mp4" },
-			}),
-			"output.mp4",
-			"work",
-		);
-
-		expect(args).not.toContain("--video-only");
-	});
-
-	it("forces packaged auto CUDA candidates onto the shared audio mux path", () => {
-		const args = buildExperimentalNvidiaCudaStaticLayoutArgs(
-			createNvidiaCudaSkipOptions({
-				audioOptions: { audioMode: "copy-source", audioSourcePath: "input.mp4" },
-				nvidiaCudaForceVideoOnly: true,
-			}),
-			"output.mp4",
-			"work",
-		);
-
-		expect(args).toContain("--video-only");
-	});
-
-	it("passes native timeline maps to the CUDA wrapper", () => {
-		const args = buildExperimentalNvidiaCudaStaticLayoutArgs(
-			createNvidiaCudaSkipOptions({
-				timelineMapPath: "timeline-map.csv",
-				timelineSegments: [
-					{
-						sourceStartMs: 0,
-						sourceEndMs: 6_000,
-						outputStartMs: 0,
-						outputEndMs: 4_000,
-						speed: 1.5,
-					},
-				],
-			}),
-			"output.mp4",
-			"work",
-		);
-
-		expect(args).toEqual(expect.arrayContaining(["--timeline-map", "timeline-map.csv"]));
-	});
-
-	it("passes background blur to the CUDA wrapper", () => {
-		const args = buildExperimentalNvidiaCudaStaticLayoutArgs(
-			createNvidiaCudaSkipOptions({
-				backgroundImagePath: "wallpaper.jpg",
-				backgroundBlurPx: 36,
-			}),
-			"output.mp4",
-			"work",
-		);
-
-		expect(args).toEqual(expect.arrayContaining(["--background-blur", "36"]));
-	});
-
-	it("passes the export encoding mode to the CUDA wrapper", () => {
-		const args = buildExperimentalNvidiaCudaStaticLayoutArgs(
-			createNvidiaCudaSkipOptions({
-				encodingMode: "quality",
-			}),
-			"output.mp4",
-			"work",
-		);
-
-		expect(args).toEqual(expect.arrayContaining(["--encoding-mode", "quality"]));
-	});
-
-	it("passes webcam source-time controls to the CUDA wrapper", () => {
-		const args = buildExperimentalNvidiaCudaStaticLayoutArgs(
-			createNvidiaCudaSkipOptions({
-				webcamInputPath: "webcam.mp4",
-				webcamLeft: 32,
-				webcamTop: 48,
-				webcamSize: 240,
-				webcamRadius: 18,
-				webcamTimeOffsetMs: -125.5,
-			}),
-			"output.mp4",
-			"work",
-		);
-
-		expect(args).toEqual(
-			expect.arrayContaining([
-				"--webcam-input",
-				"webcam.mp4",
-				"--webcam-time-offset-ms",
-				"-125.5",
-				"--webcam-stream",
-			]),
-		);
-	});
-
-	it("passes cursor telemetry and atlas assets to the CUDA wrapper", () => {
-		const args = buildExperimentalNvidiaCudaStaticLayoutArgs(
-			createNvidiaCudaSkipOptions({
-				cursorTelemetryPath: "cursor-telemetry.json",
-				cursorSize: 96,
-				cursorAtlasPath: "cursor-atlas.png",
-				cursorAtlasMetadataPath: "cursor-atlas.tsv",
-			}),
-			"output.mp4",
-			"work",
-		);
-
-		expect(args).toEqual(
-			expect.arrayContaining([
-				"--cursor-json",
-				"cursor-telemetry.json",
-				"--cursor-height",
-				"96",
-				"--cursor-style",
-				"external",
-				"--cursor-atlas-png",
-				"cursor-atlas.png",
-				"--cursor-atlas-metadata",
-				"cursor-atlas.tsv",
-			]),
-		);
-	});
-
-	it("passes source crop coordinates to the CUDA wrapper", () => {
-		const args = buildExperimentalNvidiaCudaStaticLayoutArgs(
-			createNvidiaCudaSkipOptions({
-				sourceCropX: 192,
-				sourceCropY: 108,
-				sourceCropWidth: 1536,
-				sourceCropHeight: 864,
-			}),
-			"output.mp4",
-			"work",
-		);
-
-		expect(args).toEqual(
-			expect.arrayContaining([
-				"--source-crop-x",
-				"192",
-				"--source-crop-y",
-				"108",
-				"--source-crop-width",
-				"1536",
-				"--source-crop-height",
-				"864",
-			]),
-		);
-	});
-});
-
 describe("buildExperimentalWindowsGpuStaticLayoutArgs", () => {
 	it("passes background blur to the D3D11 compositor", () => {
 		const args = buildExperimentalWindowsGpuStaticLayoutArgs(
-			createNvidiaCudaSkipOptions({
+			createStaticLayoutExportOptions({
 				backgroundImagePath: "wallpaper.jpg",
 				backgroundBlurPx: 36,
 			}),
@@ -840,7 +347,7 @@ describe("buildExperimentalWindowsGpuStaticLayoutArgs", () => {
 
 	it("passes source crop coordinates to the D3D11 compositor", () => {
 		const args = buildExperimentalWindowsGpuStaticLayoutArgs(
-			createNvidiaCudaSkipOptions({
+			createStaticLayoutExportOptions({
 				sourceCropX: 192,
 				sourceCropY: 108,
 				sourceCropWidth: 1536,
@@ -1137,197 +644,6 @@ describe("validateWindowsGpuExportSummary", () => {
 	});
 });
 
-describe("parseNvidiaCudaExportSummary", () => {
-	it("parses the pretty JSON summary emitted by the CUDA wrapper", () => {
-		const summary = parseNvidiaCudaExportSummary(
-			[
-				"preflight",
-				JSON.stringify(
-					{
-						success: true,
-						fps: 30,
-						durationSec: 10,
-						targetFrames: 300,
-						timingsMs: { nativeEncode: 920, mux: 45, endToEnd: 1400 },
-						nativeSummary: { success: true, frames: 300, fps: 326.1 },
-					},
-					null,
-					2,
-				),
-			].join("\n"),
-		);
-
-		expect(summary?.success).toBe(true);
-		expect(summary?.targetFrames).toBe(300);
-		expect(summary?.timingsMs?.nativeEncode).toBe(920);
-		expect(summary?.nativeSummary?.fps).toBe(326.1);
-	});
-
-	it("returns null when the wrapper output has no JSON object", () => {
-		expect(parseNvidiaCudaExportSummary("native helper failed before summary")).toBeNull();
-	});
-});
-
-describe("validateNvidiaCudaExportSummary", () => {
-	it("accepts CUDA output when frames and stream durations match the export target", () => {
-		const issues = validateNvidiaCudaExportSummary(
-			{
-				success: true,
-				targetFrames: 300,
-				durationSec: 10,
-				nativeSummary: { success: true, frames: 300 },
-				outputVideo: { duration: "9.999900", nb_frames: "300" },
-				outputAudio: { duration: "10.005000" },
-			},
-			{ durationSec: 10, targetFrames: 300 },
-		);
-
-		expect(issues).toEqual([]);
-	});
-
-	it("rejects CUDA output that reports too few frames or a short video stream", () => {
-		const issues = validateNvidiaCudaExportSummary(
-			{
-				success: true,
-				targetFrames: 300,
-				durationSec: 10,
-				nativeSummary: { success: true, frames: 144 },
-				outputVideo: { duration: "4.799952", nb_frames: "144" },
-				outputAudio: { duration: "10.005000" },
-			},
-			{ durationSec: 10, targetFrames: 300 },
-		);
-
-		expect(issues).toEqual([
-			"native frames 144 below expected minimum 285",
-			"output video frames 144 below expected minimum 285",
-			"output video duration 4.800s differs from expected 10.000s",
-		]);
-	});
-
-	it("rejects audio CUDA output unless the helper reports timestamp-aligned frame selection", () => {
-		const issues = validateNvidiaCudaExportSummary(
-			{
-				success: true,
-				targetFrames: 300,
-				durationSec: 10,
-				nativeSummary: {
-					success: true,
-					frames: 300,
-					selectionStage: "decoder-policy-mapped-callback",
-				},
-				outputVideo: { duration: "9.999900", nb_frames: "300" },
-				outputAudio: { duration: "10.005000" },
-			},
-			{ durationSec: 10, targetFrames: 300, requiresTimelineSync: true },
-		);
-
-		expect(issues).toEqual(["CUDA timeline mode is not timestamp-aligned for audio export"]);
-	});
-
-	it("accepts video-only CUDA output when audio is muxed by the shared export path", () => {
-		const issues = validateNvidiaCudaExportSummary(
-			{
-				success: true,
-				targetFrames: 300,
-				durationSec: 10,
-				nativeSummary: {
-					success: true,
-					frames: 300,
-					selectionStage: "decoder-policy-mapped-callback",
-				},
-				outputVideo: { duration: "9.999900", nb_frames: "300" },
-			},
-			{ durationSec: 10, targetFrames: 300, requiresTimelineSync: false },
-		);
-
-		expect(issues).toEqual([]);
-	});
-
-	it("rejects inline-audio CUDA output when the helper does not produce audio", () => {
-		const issues = validateNvidiaCudaExportSummary(
-			{
-				success: true,
-				targetFrames: 300,
-				durationSec: 10,
-				nativeSummary: {
-					success: true,
-					frames: 300,
-					sourceTimestampMode: "pts",
-					selectionStage: "timestamp-mapped-callback",
-				},
-				outputVideo: { duration: "9.999900", nb_frames: "300" },
-			},
-			{ durationSec: 10, targetFrames: 300, requiresTimelineSync: true },
-		);
-
-		expect(issues).toEqual(["missing output audio stream"]);
-	});
-
-	it("rejects inline-audio CUDA output when the probed audio stream is empty", () => {
-		const issues = validateNvidiaCudaExportSummary(
-			{
-				success: true,
-				targetFrames: 300,
-				durationSec: 10,
-				nativeSummary: {
-					success: true,
-					frames: 300,
-					sourceTimestampMode: "pts",
-					selectionStage: "timestamp-mapped-callback",
-				},
-				outputVideo: { duration: "9.999900", nb_frames: "300" },
-				outputAudio: { duration: "0.000000" },
-			},
-			{ durationSec: 10, targetFrames: 300, requiresTimelineSync: true },
-		);
-
-		expect(issues).toEqual(["output audio duration is not positive"]);
-	});
-
-	it("rejects inline-audio CUDA output when the audio duration is missing", () => {
-		const issues = validateNvidiaCudaExportSummary(
-			{
-				success: true,
-				targetFrames: 300,
-				durationSec: 10,
-				nativeSummary: {
-					success: true,
-					frames: 300,
-					sourceTimestampMode: "pts",
-					selectionStage: "timestamp-mapped-callback",
-				},
-				outputVideo: { duration: "9.999900", nb_frames: "300" },
-				outputAudio: {},
-			},
-			{ durationSec: 10, targetFrames: 300, requiresTimelineSync: true },
-		);
-
-		expect(issues).toEqual(["missing output audio duration"]);
-	});
-
-	it("accepts audio CUDA output when the helper reports PTS-aligned selection", () => {
-		const issues = validateNvidiaCudaExportSummary(
-			{
-				success: true,
-				targetFrames: 300,
-				durationSec: 10,
-				nativeSummary: {
-					success: true,
-					frames: 300,
-					sourceTimestampMode: "pts",
-					selectionStage: "timestamp-mapped-callback",
-				},
-				outputVideo: { duration: "9.999900", nb_frames: "300" },
-				outputAudio: { duration: "10.005000" },
-			},
-			{ durationSec: 10, targetFrames: 300, requiresTimelineSync: true },
-		);
-
-		expect(issues).toEqual([]);
-	});
-});
-
 describe("parseWindowsGpuExportProgressLine", () => {
 	it("parses bounded helper progress lines", () => {
 		expect(
@@ -1349,19 +665,6 @@ describe("parseWindowsGpuExportProgressLine", () => {
 		});
 	});
 
-	it("preserves CUDA preparation progress as a non-rendering stage", () => {
-		expect(
-			parseWindowsGpuExportProgressLine(
-				'PROGRESS {"currentFrame":0,"totalFrames":100,"percentage":2.5,"stage":"preparing"}',
-			),
-		).toEqual({
-			currentFrame: 0,
-			totalFrames: 100,
-			percentage: 2.5,
-			stage: "preparing",
-		});
-	});
-
 	it("ignores non-progress or malformed helper stderr", () => {
 		expect(parseWindowsGpuExportProgressLine("warning: encoder selected")).toBeNull();
 		expect(parseWindowsGpuExportProgressLine("PROGRESS not-json")).toBeNull();
@@ -1370,47 +673,6 @@ describe("parseWindowsGpuExportProgressLine", () => {
 				'PROGRESS {"currentFrame":1,"totalFrames":0,"percentage":999}',
 			),
 		).toBeNull();
-	});
-});
-
-describe("mapNvidiaCudaWrapperProgressPercentage", () => {
-	it("keeps preflight progress and maps native encode into the main export span", () => {
-		expect(
-			mapNvidiaCudaWrapperProgressPercentage({
-				currentFrame: 0,
-				totalFrames: 100,
-				percentage: 2.5,
-			}),
-		).toBe(2.5);
-		expect(
-			mapNvidiaCudaWrapperProgressPercentage({
-				currentFrame: 0,
-				totalFrames: 100,
-				percentage: 0,
-			}),
-		).toBe(3);
-		expect(
-			mapNvidiaCudaWrapperProgressPercentage({
-				currentFrame: 50,
-				totalFrames: 100,
-				percentage: 50,
-			}),
-		).toBe(50.5);
-		expect(
-			mapNvidiaCudaWrapperProgressPercentage({
-				currentFrame: 100,
-				totalFrames: 100,
-				percentage: 100,
-			}),
-		).toBe(98);
-		expect(
-			mapNvidiaCudaWrapperProgressPercentage({
-				currentFrame: 100,
-				totalFrames: 100,
-				percentage: 97.25,
-				stage: "finalizing",
-			}),
-		).toBe(97.25);
 	});
 });
 

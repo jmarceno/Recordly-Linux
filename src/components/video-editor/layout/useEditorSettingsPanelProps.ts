@@ -33,8 +33,6 @@ type Input = {
 	whisperModelDownloadStatus: "idle" | "downloading" | "downloaded" | "error";
 	whisperModelDownloadProgress: number;
 	isGeneratingCaptions: boolean;
-	sessionNativeCaptureUnavailable: boolean;
-	setNativeCaptureUnavailableModalOpen: Dispatch<SetStateAction<boolean>>;
 	handleUploadWebcam: () => void;
 	handleClearWebcam: () => void;
 };
@@ -61,8 +59,6 @@ export function useEditorSettingsPanelProps(input: Input): ComponentProps<typeof
 		whisperModelDownloadStatus,
 		whisperModelDownloadProgress,
 		isGeneratingCaptions,
-		sessionNativeCaptureUnavailable,
-		setNativeCaptureUnavailableModalOpen,
 		handleUploadWebcam,
 		handleClearWebcam,
 	} = input;
@@ -145,11 +141,8 @@ export function useEditorSettingsPanelProps(input: Input): ComponentProps<typeof
 		onCursorSpringDampingMultiplierChange: appearance.setCursorSpringDampingMultiplier,
 		cursorSpringMassMultiplier: appearance.cursorSpringMassMultiplier,
 		onCursorSpringMassMultiplierChange: appearance.setCursorSpringMassMultiplier,
-		cameraSpringStiffnessMultiplier: appearance.cameraSpringStiffnessMultiplier,
 		onCameraSpringStiffnessMultiplierChange: appearance.setCameraSpringStiffnessMultiplier,
-		cameraSpringDampingMultiplier: appearance.cameraSpringDampingMultiplier,
 		onCameraSpringDampingMultiplierChange: appearance.setCameraSpringDampingMultiplier,
-		cameraSpringMassMultiplier: appearance.cameraSpringMassMultiplier,
 		onCameraSpringMassMultiplierChange: appearance.setCameraSpringMassMultiplier,
 		zoomClassicMode: appearance.zoomClassicMode,
 		onZoomClassicModeChange: appearance.setZoomClassicMode,
@@ -209,8 +202,6 @@ export function useEditorSettingsPanelProps(input: Input): ComponentProps<typeof
 		onCaptionDelete: captionCommands.handleCaptionDelete,
 		onDownloadWhisperSmallModel: autoCaptionController.handleDownloadWhisperSmallModel,
 		onDeleteWhisperSmallModel: autoCaptionController.handleDeleteWhisperSmallModel,
-		nativeCaptureUnavailableSession: sessionNativeCaptureUnavailable,
-		onOpenNativeCaptureUnavailableModal: () => setNativeCaptureUnavailableModalOpen(true),
 		onAnnotationContentChange: annotationCommands.handleAnnotationContentChange,
 		onAnnotationTypeChange: annotationCommands.handleAnnotationTypeChange,
 		onAnnotationStyleChange: annotationCommands.handleAnnotationStyleChange,

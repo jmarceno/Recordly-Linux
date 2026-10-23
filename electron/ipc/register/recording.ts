@@ -16,6 +16,8 @@ import { getHudCaptureExcludedProcessIds } from "../../../src/lib/hudCaptureProt
 import { showCursor } from "../../cursorHider";
 import {
 	beginHudCaptureProtection,
+	hideHudForCapture,
+	restoreHudAfterCapture,
 	getHudOverlayCaptureProtectionEnabled,
 	hideAreaRecordingBorder,
 	showAreaRecordingBorder,
@@ -418,7 +420,12 @@ export function registerRecordingHandlers(
 			// Protect the HUD at the capture boundary, before the renderer publishes recording state.
 			beginHudCaptureProtection();
 			if (process.platform === "linux" && isCosmicSource(source)) {
-				return startCosmicRecording(source, options);
+				await hideHudForCapture();
+				const result = await startCosmicRecording(source, options);
+				if (!result?.success) {
+					restoreHudAfterCapture();
+				}
+				return result;
 			}
 			const visibleWindowBounds = source.id?.startsWith("window:")
 				? await bringSelectedWindowForward(source)

@@ -22,9 +22,6 @@ type Props = {
 	exportDimensions: ReturnType<typeof useExportDimensions>;
 	exportStatus: ReturnType<typeof useExportStatusViewModel>;
 	hasCaptionsForSidecar: boolean;
-	nvidiaCudaExportAvailable: boolean;
-	experimentalNvidiaCudaExport: boolean;
-	setExperimentalNvidiaCudaExport: (enabled: boolean) => void;
 	handleOpenExportDropdown: () => void;
 	handleExportDropdownClose: () => void;
 	handleCancelExport: () => void;
@@ -58,9 +55,6 @@ export function EditorExportMenu(props: Props) {
 		exportDimensions,
 		exportStatus,
 		hasCaptionsForSidecar,
-		nvidiaCudaExportAvailable,
-		experimentalNvidiaCudaExport,
-		setExperimentalNvidiaCudaExport,
 		handleOpenExportDropdown,
 		handleExportDropdownClose,
 		handleCancelExport,
@@ -74,7 +68,6 @@ export function EditorExportMenu(props: Props) {
 		setExportQuality,
 		exportEncodingMode,
 		setExportEncodingMode,
-		exportPipelineModel,
 		mp4FrameRate,
 		setMp4FrameRate,
 		exportFormat,
@@ -120,10 +113,6 @@ export function EditorExportMenu(props: Props) {
 			onExportEncodingModeChange={setExportEncodingMode}
 			mp4FrameRate={mp4FrameRate}
 			onMp4FrameRateChange={setMp4FrameRate}
-			exportPipelineModel={exportPipelineModel}
-			experimentalNvidiaCudaExport={experimentalNvidiaCudaExport && nvidiaCudaExportAvailable}
-			onExperimentalNvidiaCudaExportChange={setExperimentalNvidiaCudaExport}
-			nvidiaCudaExportAvailable={nvidiaCudaExportAvailable}
 			exportQuality={exportQuality}
 			onExportQualityChange={setExportQuality}
 			gifFrameRate={gifFrameRate}
