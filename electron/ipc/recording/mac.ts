@@ -261,6 +261,12 @@ export async function finalizeStoredVideo(videoPath: string) {
 		throw error;
 	}
 
+	// The webcam layer is a sidecar of the screen recording: it must not take the
+	// cursor telemetry or become the current video.
+	if (/-webcam\.[^.]+$/i.test(videoPath)) {
+		return { success: true, path: videoPath, message: "Webcam video stored successfully" };
+	}
+
 	snapshotCursorTelemetryForPersistence();
 	setCurrentVideoPath(videoPath);
 	setCurrentProjectPath(null);
