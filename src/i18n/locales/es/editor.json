@@ -118,7 +118,6 @@
 	},
 	"exportTips": {
 		"autoZooms": "Consejo: Desactiva los zooms automáticos en la configuración",
-		"experimentalBuilds": "Consejo: Activa el acceso a versiones experimentales en la configuración",
 		"cursorAppearance": "Consejo: Puedes personalizar la apariencia del cursor"
 	},
 	"nativeCaptureUnavailable": {

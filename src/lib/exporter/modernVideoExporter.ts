@@ -1729,7 +1729,7 @@ export class ModernVideoExporter {
 			videoInfo,
 			effectiveDurationSec,
 		);
-		if (needsTimelineMap && this.config.experimentalNativeExport !== true) {
+		if (needsTimelineMap && this.config.nativeExport !== true) {
 			reasons.push("native-timeline-requires-windows-gpu");
 		}
 		if (
@@ -1742,7 +1742,7 @@ export class ModernVideoExporter {
 					: "unsupported-native-trim-timeline",
 			);
 		}
-		if (hasZoomRegions && this.config.experimentalNativeExport !== true) {
+		if (hasZoomRegions && this.config.nativeExport !== true) {
 			reasons.push("native-zoom-requires-windows-gpu");
 		}
 		if ((this.config.annotationRegions ?? []).length > 0) {
@@ -2428,7 +2428,7 @@ export class ModernVideoExporter {
 				hasCursorOverlay:
 					this.config.showCursor === true &&
 					(this.config.cursorTelemetry?.length ?? 0) > 0,
-				experimentalNativeExport: this.config.experimentalNativeExport === true,
+				nativeExport: this.config.nativeExport === true,
 			});
 			return null;
 		}
@@ -2552,7 +2552,7 @@ export class ModernVideoExporter {
 				? normalizeLightningRuntimePlatform(navigator.userAgent)
 				: "unknown";
 		this.encoderName =
-			this.config.experimentalNativeExport === true && runtimePlatform === "win32"
+			this.config.nativeExport === true && runtimePlatform === "win32"
 				? "windows-native-compositor"
 				: "static-layout-h264-nvenc";
 		this.reportProgress(0, totalFrames, "preparing");
@@ -2677,7 +2677,7 @@ export class ModernVideoExporter {
 				zoomTelemetry,
 				timelineSegments,
 				chunkDurationSec: STATIC_LAYOUT_CHUNK_DURATION_SEC,
-				experimentalWindowsGpuCompositor: this.config.experimentalNativeExport === true,
+				windowsGpuCompositor: this.config.nativeExport === true,
 				audioOptions: {
 					...audioOptions,
 					outputDurationSec: effectiveDuration,

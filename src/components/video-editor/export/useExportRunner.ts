@@ -236,7 +236,7 @@ export function useExportRunner(input: ExportRunnerInput) {
 						});
 					const {
 						pipelineModel,
-						useExperimentalNativeExport,
+						useNativeExport,
 						backendPreference,
 					} = resolveMp4ExportRouting({
 						smokeExportConfig: {
@@ -274,7 +274,7 @@ export function useExportRunner(input: ExportRunnerInput) {
 						frameRate: selectedMp4FrameRate,
 						quality,
 						encodingMode,
-						useModernNativeStaticLayout: useExperimentalNativeExport,
+						useModernNativeStaticLayout: useNativeExport,
 					});
 					const sourceAudioTrackSettingsForExport =
 						selectedClipId !== null
@@ -291,7 +291,7 @@ export function useExportRunner(input: ExportRunnerInput) {
 						encodingMode,
 						preferredEncoderPath: supportedSourceDimensions.encoderPath,
 						preferredRenderBackend: smokeExportConfig.renderBackend,
-						experimentalNativeExport: useExperimentalNativeExport,
+						nativeExport: useNativeExport,
 						maxEncodeQueue: smokeExportConfig.maxEncodeQueue,
 						maxDecodeQueue: smokeExportConfig.maxDecodeQueue,
 						maxPendingFrames: smokeExportConfig.maxPendingFrames,

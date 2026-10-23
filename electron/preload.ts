@@ -336,7 +336,7 @@ contextBridge.exposeInMainWorld("electronAPI", {
 			speed: number;
 		}>;
 		chunkDurationSec?: number;
-		experimentalWindowsGpuCompositor?: boolean;
+		windowsGpuCompositor?: boolean;
 		audioOptions?: {
 			audioMode?: "none" | "copy-source" | "trim-source" | "edited-track";
 			audioSourcePath?: string | null;

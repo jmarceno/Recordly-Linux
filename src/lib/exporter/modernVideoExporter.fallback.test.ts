@@ -213,7 +213,7 @@ describe("ModernVideoExporter native fallback routing", () => {
 			shadowIntensity: 0,
 			showShadow: false,
 			cropRegion: { x: 0, y: 0, width: 1, height: 1 },
-			experimentalNativeExport: true,
+			nativeExport: true,
 			backendPreference: "breeze",
 		} as never) as unknown as {
 			export: () => Promise<{ success: boolean; blob?: Blob; error?: string }>;
@@ -267,7 +267,7 @@ describe("ModernVideoExporter native fallback routing", () => {
 			shadowIntensity: 0,
 			showShadow: false,
 			cropRegion: { x: 0, y: 0, width: 1, height: 1 },
-			experimentalNativeExport: true,
+			nativeExport: true,
 			backendPreference: "auto",
 		} as never) as unknown as {
 			export: () => Promise<{ success: boolean; blob?: Blob; error?: string }>;

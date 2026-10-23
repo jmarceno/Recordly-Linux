@@ -118,7 +118,6 @@
 	},
 	"exportTips": {
 		"autoZooms": "Tip: Turn off auto-applied zooms in settings",
-		"experimentalBuilds": "Tip: Try experimental builds by turning on access in settings",
 		"cursorAppearance": "Tip: You can customise your cursor appearance"
 	},
 	"nativeCaptureUnavailable": {

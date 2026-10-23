@@ -192,10 +192,10 @@ export class VideoExporter {
 				maxPendingFrames: this.config.maxPendingFrames,
 			});
 			const videoInfo = await this.streamingDecoder.loadMetadata(this.config.videoUrl);
-			const shouldUseExperimentalNativeExport = this.shouldUseExperimentalNativeExport();
+			const shouldUseNativeExport = this.shouldUseNativeExport();
 			const audioPlan = this.buildNativeAudioPlan(videoInfo);
-			const nativeAudioPlan = shouldUseExperimentalNativeExport ? audioPlan : null;
-			let useNativeEncoder = shouldUseExperimentalNativeExport
+			const nativeAudioPlan = shouldUseNativeExport ? audioPlan : null;
+			let useNativeEncoder = shouldUseNativeExport
 				? await this.tryStartNativeVideoExport()
 				: false;
 			const shouldUsePitchPreservingFfmpegAudio =
@@ -481,7 +481,7 @@ export class VideoExporter {
 		}
 	}
 
-	private shouldUseExperimentalNativeExport(): boolean {
+	private shouldUseNativeExport(): boolean {
 		return (
 			typeof window !== "undefined" &&
 			typeof VideoEncoder !== "undefined" &&
@@ -675,7 +675,7 @@ export class VideoExporter {
 	}
 
 	private async tryStartNativeVideoExport(): Promise<boolean> {
-		if (!this.shouldUseExperimentalNativeExport()) {
+		if (!this.shouldUseNativeExport()) {
 			return false;
 		}
 

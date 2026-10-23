@@ -3,7 +3,7 @@ import type { SmokeExportConfig } from "./smokeExportConfig";
 
 export type Mp4ExportRouting = {
 	pipelineModel: ExportPipelineModel;
-	useExperimentalNativeExport: boolean;
+	useNativeExport: boolean;
 	backendPreference: ExportBackendPreference;
 };
 
@@ -24,7 +24,7 @@ export function resolveMp4ExportRouting({
 	const pipelineModel = smokeExportConfig.enabled
 		? (smokeExportConfig.pipelineModel ?? "modern")
 		: (settings.pipelineModel ?? exportPipelineModel);
-	const useExperimentalNativeExport =
+	const useNativeExport =
 		pipelineModel === "modern" &&
 		(smokeExportConfig.enabled ? smokeExportConfig.useNativeExport : true);
 	const backendPreference =
@@ -33,13 +33,13 @@ export function resolveMp4ExportRouting({
 			: smokeExportConfig.enabled
 				? (smokeExportConfig.backendPreference ??
 					(smokeExportConfig.useNativeExport ? "breeze" : "webcodecs"))
-				: useExperimentalNativeExport
+				: useNativeExport
 					? "auto"
 					: (settings.backendPreference ?? exportBackendPreference);
 
 	return {
 		pipelineModel,
-		useExperimentalNativeExport,
+		useNativeExport,
 		backendPreference,
 	};
 }

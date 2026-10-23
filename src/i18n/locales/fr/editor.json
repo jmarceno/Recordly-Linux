@@ -118,7 +118,6 @@
 	},
 	"exportTips": {
 		"autoZooms": "Astuce : Désactivez les zooms automatiques dans les paramètres",
-		"experimentalBuilds": "Astuce : Activez l’accès aux versions expérimentales dans les paramètres",
 		"cursorAppearance": "Astuce : Vous pouvez personnaliser l’apparence du curseur"
 	},
 	"nativeCaptureUnavailable": {

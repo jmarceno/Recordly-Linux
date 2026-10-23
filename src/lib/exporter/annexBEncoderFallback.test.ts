@@ -5,7 +5,7 @@ import { VideoExporter } from "./videoExporter";
 
 interface NativeExportStartup {
 	tryStartNativeVideoExport: () => Promise<boolean>;
-	shouldUseExperimentalNativeExport: () => boolean;
+	shouldUseNativeExport: () => boolean;
 }
 
 afterEach(() => {
@@ -60,7 +60,7 @@ for (const Exporter of [ModernVideoExporter, VideoExporter]) {
 			} as VideoExporterConfig;
 			const exporter = new Exporter(config) as unknown as NativeExportStartup;
 			if (Exporter === VideoExporter) {
-				vi.spyOn(exporter, "shouldUseExperimentalNativeExport").mockReturnValue(true);
+				vi.spyOn(exporter, "shouldUseNativeExport").mockReturnValue(true);
 			}
 
 			const success = await exporter.tryStartNativeVideoExport();

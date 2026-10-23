@@ -7,7 +7,7 @@ export interface ExportConfig {
 	encodingMode?: ExportEncodingMode;
 	backendPreference?: ExportBackendPreference;
 	preferredRenderBackend?: ExportRenderBackend;
-	experimentalNativeExport?: boolean;
+	nativeExport?: boolean;
 	maxEncodeQueue?: number;
 	maxDecodeQueue?: number;
 	maxPendingFrames?: number;

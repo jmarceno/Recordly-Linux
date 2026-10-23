@@ -118,7 +118,6 @@
 	},
 	"exportTips": {
 		"autoZooms": "Tip: Schakel automatisch toegepaste zooms uit in de instellingen",
-		"experimentalBuilds": "Tip: Schakel toegang tot experimentele builds in via de instellingen",
 		"cursorAppearance": "Tip: Je kunt het uiterlijk van je cursor aanpassen"
 	},
 	"nativeCaptureUnavailable": {

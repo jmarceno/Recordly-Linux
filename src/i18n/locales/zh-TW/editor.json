@@ -118,7 +118,6 @@
 	},
 	"exportTips": {
 		"autoZooms": "提示：可在設定中關閉自動套用的縮放",
-		"experimentalBuilds": "提示：可在設定中開啟實驗版本存取權",
 		"cursorAppearance": "提示：你可以自訂游標外觀"
 	},
 	"nativeCaptureUnavailable": {

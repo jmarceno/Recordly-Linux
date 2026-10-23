@@ -68,14 +68,6 @@ export function useExportMessages({
 				durationSeconds: DEFAULT_MESSAGE_DURATION_SECONDS,
 			},
 			{
-				id: "tip:experimental-builds",
-				text: t(
-					"editor.exportTips.experimentalBuilds",
-					"Tip: Try experimental builds by turning on access in settings",
-				),
-				durationSeconds: DEFAULT_MESSAGE_DURATION_SECONDS,
-			},
-			{
 				id: "tip:cursor-appearance",
 				text: t(
 					"editor.exportTips.cursorAppearance",

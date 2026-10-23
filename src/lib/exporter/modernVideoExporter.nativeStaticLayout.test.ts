@@ -36,7 +36,7 @@ function createExporter(overrides: Record<string, unknown> = {}) {
 		shadowIntensity: 0,
 		showShadow: false,
 		cropRegion: { x: 0, y: 0, width: 1, height: 1 },
-		experimentalNativeExport: true,
+		nativeExport: true,
 		...overrides,
 	} as never) as unknown as {
 		buildNativeAudioPlan: (videoInfo: DecodedVideoInfo) => unknown;
@@ -250,9 +250,9 @@ describe("ModernVideoExporter native static-layout eligibility", () => {
 		).toBeNull();
 	});
 
-	it("allows cursor overlay native static-layout without the experimental native flag", () => {
+	it("allows cursor overlay native static-layout without the native export flag", () => {
 		const exporter = createExporter({
-			experimentalNativeExport: false,
+			nativeExport: false,
 			showCursor: true,
 			cursorTelemetry: [
 				{ timeMs: 0, cx: 0.25, cy: 0.35 },
@@ -533,7 +533,7 @@ describe("ModernVideoExporter native static-layout eligibility", () => {
 
 	it("requires the Windows GPU compositor for non-tail trim timelines", () => {
 		const exporter = createExporter({
-			experimentalNativeExport: false,
+			nativeExport: false,
 			trimRegions: [{ id: "trim-1", startMs: 10_000, endMs: 12_000 }],
 		});
 
@@ -557,7 +557,7 @@ describe("ModernVideoExporter native static-layout eligibility", () => {
 		const speedRegions: SpeedRegion[] = [
 			{ id: "speed-1", startMs: 1_000, endMs: 4_000, speed: 1.5 },
 		];
-		const exporter = createExporter({ experimentalNativeExport: false, speedRegions });
+		const exporter = createExporter({ nativeExport: false, speedRegions });
 
 		expect(
 			exporter.getNativeStaticLayoutSkipReason(

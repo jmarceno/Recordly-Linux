@@ -118,7 +118,6 @@
 	},
 	"exportTips": {
 		"autoZooms": "Suggerimento: Disattiva gli zoom applicati automaticamente nelle impostazioni",
-		"experimentalBuilds": "Suggerimento: Attiva l’accesso alle build sperimentali nelle impostazioni",
 		"cursorAppearance": "Suggerimento: Puoi personalizzare l’aspetto del cursore"
 	},
 	"nativeCaptureUnavailable": {

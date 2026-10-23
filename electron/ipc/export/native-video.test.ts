@@ -54,7 +54,7 @@ vi.mock("node:child_process", () => ({
 
 import { app } from "electron";
 import {
-	buildExperimentalWindowsGpuStaticLayoutArgs,
+	buildWindowsGpuStaticLayoutArgs,
 	buildNativeStaticLayoutSourceProxyArgs,
 	buildNativeStaticLayoutTimelineSegments,
 	buildNativeVideoAudioMuxArgs,
@@ -104,7 +104,7 @@ function createStaticLayoutExportOptions(
 		offsetX: 160,
 		offsetY: 90,
 		backgroundColor: "#101010",
-		experimentalWindowsGpuCompositor: true,
+		windowsGpuCompositor: true,
 		...overrides,
 	};
 }
@@ -332,9 +332,9 @@ describe("export hardware diagnostics", () => {
 	});
 });
 
-describe("buildExperimentalWindowsGpuStaticLayoutArgs", () => {
+describe("buildWindowsGpuStaticLayoutArgs", () => {
 	it("passes background blur to the D3D11 compositor", () => {
-		const args = buildExperimentalWindowsGpuStaticLayoutArgs(
+		const args = buildWindowsGpuStaticLayoutArgs(
 			createStaticLayoutExportOptions({
 				backgroundImagePath: "wallpaper.jpg",
 				backgroundBlurPx: 36,
@@ -346,7 +346,7 @@ describe("buildExperimentalWindowsGpuStaticLayoutArgs", () => {
 	});
 
 	it("passes source crop coordinates to the D3D11 compositor", () => {
-		const args = buildExperimentalWindowsGpuStaticLayoutArgs(
+		const args = buildWindowsGpuStaticLayoutArgs(
 			createStaticLayoutExportOptions({
 				sourceCropX: 192,
 				sourceCropY: 108,

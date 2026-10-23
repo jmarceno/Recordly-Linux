@@ -175,7 +175,7 @@ export interface NativeStaticLayoutExportOptions {
 	timelineSegments?: NativeStaticLayoutTimelineSegment[];
 	timelineMapPath?: string | null;
 	chunkDurationSec?: number;
-	experimentalWindowsGpuCompositor?: boolean;
+	windowsGpuCompositor?: boolean;
 	audioOptions?: NativeVideoExportFinishOptions;
 }
 
@@ -1538,7 +1538,7 @@ function getNativeBinPlatformArch() {
 	return process.arch === "arm64" ? "win32-arm64" : "win32-x64";
 }
 
-async function resolveExperimentalWindowsGpuExporterPath() {
+async function resolveWindowsGpuExporterPath() {
 	if (process.platform !== "win32") {
 		return null;
 	}
@@ -1605,7 +1605,7 @@ export function getNativeGpuCompositorStallTimeoutMs() {
 	return DEFAULT_NATIVE_GPU_STALL_TIMEOUT_MS;
 }
 
-export function buildExperimentalWindowsGpuStaticLayoutArgs(
+export function buildWindowsGpuStaticLayoutArgs(
 	options: NativeStaticLayoutExportOptions,
 	outputPath: string,
 ) {
@@ -1973,18 +1973,18 @@ async function prepareNativeStaticLayoutSourceInput(
 	};
 }
 
-async function runExperimentalWindowsGpuStaticLayoutExport(
+async function runWindowsGpuStaticLayoutExport(
 	options: NativeStaticLayoutExportOptions,
 	outputPath: string,
 	session: NativeStaticLayoutExportSession,
 	onProgress?: (progress: NativeStaticLayoutExportProgress) => void,
 ) {
-	const executablePath = await resolveExperimentalWindowsGpuExporterPath();
+	const executablePath = await resolveWindowsGpuExporterPath();
 	if (!executablePath) {
-		throw new Error("Experimental Windows GPU exporter is not built");
+		throw new Error("Windows GPU exporter is not built");
 	}
 
-	const args = buildExperimentalWindowsGpuStaticLayoutArgs(options, outputPath);
+	const args = buildWindowsGpuStaticLayoutArgs(options, outputPath);
 	const startedAt = getNowMs();
 	const startedAtIso = new Date().toISOString();
 	const timeoutMs = Math.max(15 * 60 * 1000, options.durationSec * 1000);
@@ -2117,10 +2117,10 @@ async function runExperimentalWindowsGpuStaticLayoutExport(
 				reject(
 					new Error(
 						(stallTimedOut && stallTimeoutMs
-							? `Experimental Windows GPU exporter stalled for ${stallTimeoutMs}ms without progress`
+							? `Windows GPU exporter stalled for ${stallTimeoutMs}ms without progress`
 							: stderr.trim()) ||
 							stdout.trim() ||
-							`Experimental Windows GPU exporter exited with code ${code ?? "unknown"}${suffix}`,
+							`Windows GPU exporter exited with code ${code ?? "unknown"}${suffix}`,
 					),
 				);
 				return;
@@ -2150,13 +2150,13 @@ export async function exportNativeStaticLayoutVideo(
 	options = await normalizeNativeStaticLayoutBackground(options);
 	if (
 		options.webcamInputPath &&
-		!(options.experimentalWindowsGpuCompositor && process.platform === "win32")
+		!(options.windowsGpuCompositor && process.platform === "win32")
 	) {
 		throw new Error("Native webcam overlay requires the Windows GPU compositor");
 	}
 	if (
 		options.zoomTelemetry?.length &&
-		!(options.experimentalWindowsGpuCompositor && process.platform === "win32")
+		!(options.windowsGpuCompositor && process.platform === "win32")
 	) {
 		throw new Error("Native zoom telemetry requires the Windows GPU compositor");
 	}
@@ -2223,7 +2223,7 @@ export async function exportNativeStaticLayoutVideo(
 			path.join(chunkDirectory, "timeline-map.csv"),
 		);
 		if (timelineMapPath) {
-			if (!(options.experimentalWindowsGpuCompositor && process.platform === "win32")) {
+			if (!(options.windowsGpuCompositor && process.platform === "win32")) {
 				throw new Error("Native timeline-map export requires the Windows GPU compositor");
 			}
 			options = {
@@ -2258,12 +2258,12 @@ export async function exportNativeStaticLayoutVideo(
 		let didRenderVideo = false;
 		let didMuxAudioInline = false;
 
-		if (options.experimentalWindowsGpuCompositor && process.platform === "win32") {
+		if (options.windowsGpuCompositor && process.platform === "win32") {
 			try {
 				if (session.terminating) {
 					throw new Error("Native static layout export was cancelled");
 				}
-				let experimentalGpuOptions = options;
+				let gpuOptions = options;
 				if (options.webcamInputPath) {
 					const webcamProxyPath = path.join(chunkDirectory, "webcam-proxy.mp4");
 					const webcamInput = await prepareWindowsGpuWebcamInput(
@@ -2280,7 +2280,7 @@ export async function exportNativeStaticLayoutVideo(
 						webcamInput.inputPath &&
 						webcamInput.inputPath !== options.webcamInputPath
 					) {
-						experimentalGpuOptions = {
+						gpuOptions = {
 							...options,
 							webcamInputPath: webcamInput.inputPath,
 						};
@@ -2292,8 +2292,8 @@ export async function exportNativeStaticLayoutVideo(
 						path.join(chunkDirectory, "cursor-telemetry.csv"),
 					);
 					if (cursorTelemetryPath) {
-						experimentalGpuOptions = {
-							...experimentalGpuOptions,
+						gpuOptions = {
+							...gpuOptions,
 							cursorTelemetryPath,
 						};
 					}
@@ -2303,8 +2303,8 @@ export async function exportNativeStaticLayoutVideo(
 						path.join(chunkDirectory, "cursor-atlas.csv"),
 					);
 					if (cursorAtlas) {
-						experimentalGpuOptions = {
-							...experimentalGpuOptions,
+						gpuOptions = {
+							...gpuOptions,
 							cursorAtlasPath: cursorAtlas.atlasPath,
 							cursorAtlasMetadataPath: cursorAtlas.metadataPath,
 						};
@@ -2316,15 +2316,15 @@ export async function exportNativeStaticLayoutVideo(
 						path.join(chunkDirectory, "zoom-telemetry.csv"),
 					);
 					if (zoomTelemetryPath) {
-						experimentalGpuOptions = {
-							...experimentalGpuOptions,
+						gpuOptions = {
+							...gpuOptions,
 							zoomTelemetryPath,
 						};
 					}
 				}
 				if (!didRenderVideo) {
-					const gpuResult = await runExperimentalWindowsGpuStaticLayoutExport(
-						experimentalGpuOptions,
+					const gpuResult = await runWindowsGpuStaticLayoutExport(
+						gpuOptions,
 						videoOnlyPath,
 						session,
 						onProgress,
@@ -2335,7 +2335,7 @@ export async function exportNativeStaticLayoutVideo(
 					});
 					if (gpuValidationIssues.length > 0) {
 						throw new Error(
-							`Experimental Windows GPU compositor produced an invalid output: ${gpuValidationIssues.join("; ")}`,
+							`Windows GPU compositor produced an invalid output: ${gpuValidationIssues.join("; ")}`,
 						);
 					}
 					await validateRenderedVideoOutput();
@@ -2384,7 +2384,7 @@ export async function exportNativeStaticLayoutVideo(
 				}
 				metrics.fallbackChunkCount++;
 				console.warn(
-					"[native-static-layout-export] Experimental Windows GPU compositor unavailable; falling back to FFmpeg static layout:",
+					"[native-static-layout-export] Windows GPU compositor unavailable; falling back to FFmpeg static layout:",
 					error,
 				);
 				await removeTemporaryExportFile(videoOnlyPath);

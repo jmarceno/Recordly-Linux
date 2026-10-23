@@ -16,7 +16,7 @@ describe("resolveMp4ExportRouting", () => {
 	it("uses the modern native auto route for normal MP4 exports by default", () => {
 		expect(resolveMp4ExportRouting(baseOptions)).toEqual({
 			pipelineModel: "modern",
-			useExperimentalNativeExport: true,
+			useNativeExport: true,
 			backendPreference: "auto",
 		});
 	});
@@ -29,7 +29,7 @@ describe("resolveMp4ExportRouting", () => {
 			}),
 		).toEqual({
 			pipelineModel: "legacy",
-			useExperimentalNativeExport: false,
+			useNativeExport: false,
 			backendPreference: "webcodecs",
 		});
 	});
@@ -45,7 +45,7 @@ describe("resolveMp4ExportRouting", () => {
 			}),
 		).toEqual({
 			pipelineModel: "modern",
-			useExperimentalNativeExport: false,
+			useNativeExport: false,
 			backendPreference: "webcodecs",
 		});
 
@@ -59,7 +59,7 @@ describe("resolveMp4ExportRouting", () => {
 			}),
 		).toEqual({
 			pipelineModel: "modern",
-			useExperimentalNativeExport: true,
+			useNativeExport: true,
 			backendPreference: "breeze",
 		});
 	});
