@@ -35,6 +35,7 @@ const AUDIO_BYTES_PER_MS = (AUDIO_RATE * 2 * 2) / 1000;
 
 interface CosmicAudioTrack {
 	process: ChildProcess;
+	role: "mic" | "system";
 	path: string;
 	file: WriteStream;
 	/** Wall-clock time of the first captured sample. */
@@ -42,15 +43,21 @@ interface CosmicAudioTrack {
 	firstData: Promise<void>;
 }
 
-interface ActiveCosmicRecording {
+interface CosmicVideoCapture {
 	capture: ChildProcess;
 	encoder: ChildProcess;
-	audio: CosmicAudioTrack[];
 	videoPath: string;
-	outputPath: string;
 	encoderExit: Promise<number | null>;
-	/** Wall-clock time of the first video frame. */
-	videoStartedAtMs: number;
+}
+
+interface ActiveCosmicRecording {
+	/** Null for audio-only (meeting) recordings. */
+	video: CosmicVideoCapture | null;
+	audio: CosmicAudioTrack[];
+	outputPath: string;
+	/** Wall-clock time every track is aligned to: the first video frame, or the first audio sample. */
+	startedAtMs: number;
+	keepSpeakerTracks: boolean;
 	pauseState: { paused: boolean };
 }
 
@@ -149,23 +156,19 @@ function readCaptureFormat(capture: ChildProcess) {
 	);
 }
 
-export async function startCosmicRecording(
-	source: SelectedSource,
+/**
+ * Starts one parec per requested device. Audio starts before any video; each
+ * track remembers when its first sample was captured so the mux can align it.
+ */
+async function startAudioTracks(
+	recordingsDir: string,
+	timestamp: number,
 	options: NativeMacRecordingOptions | undefined,
-): Promise<{ success: boolean; message?: string }> {
-	if (active) return { success: false, message: "A screen recording is already active." };
-	const outputName = (source.id ?? "").slice(COSMIC_SOURCE_PREFIX.length);
-	const recordingsDir = await getRecordingsDir();
-	const timestamp = Date.now();
-	const outputPath = path.join(recordingsDir, `recording-${timestamp}.mp4`);
-	const videoPath = path.join(recordingsDir, `.recording-${timestamp}.video.mkv`);
-
-	// Audio starts before the video. Each track remembers when its first sample
-	// was captured, and the mux trims it to the first video frame.
-	const pauseState = { paused: false };
+	pauseState: { paused: boolean },
+): Promise<CosmicAudioTrack[]> {
 	const audio: CosmicAudioTrack[] = [];
-	const startAudio = (device: string, suffix: string) => {
-		const file = path.join(recordingsDir, `.recording-${timestamp}.${suffix}.pcm`);
+	const startAudio = (device: string, role: "mic" | "system") => {
+		const file = path.join(recordingsDir, `.recording-${timestamp}.${role}.pcm`);
 		const child = spawn(
 			"parec",
 			[
@@ -181,6 +184,7 @@ export async function startCosmicRecording(
 		let resolveFirstData!: () => void;
 		const track: CosmicAudioTrack = {
 			process: child,
+			role,
 			path: file,
 			file: createWriteStream(file),
 			startedAtMs: null,
@@ -215,13 +219,30 @@ export async function startCosmicRecording(
 		Promise.all(audio.map((track) => track.firstData)),
 		new Promise((resolve) => setTimeout(resolve, 1500)),
 	]);
+	return audio;
+}
 
-	const killAudio = () => {
-		for (const track of audio) {
-			track.process.kill("SIGKILL");
-			track.file.destroy();
-		}
-	};
+function killAudioTracks(audio: CosmicAudioTrack[]) {
+	for (const track of audio) {
+		track.process.kill("SIGKILL");
+		track.file.destroy();
+	}
+}
+
+export async function startCosmicRecording(
+	source: SelectedSource,
+	options: NativeMacRecordingOptions | undefined,
+): Promise<{ success: boolean; message?: string }> {
+	if (active) return { success: false, message: "A screen recording is already active." };
+	const outputName = (source.id ?? "").slice(COSMIC_SOURCE_PREFIX.length);
+	const recordingsDir = await getRecordingsDir();
+	const timestamp = Date.now();
+	const outputPath = path.join(recordingsDir, `recording-${timestamp}.mp4`);
+	const videoPath = path.join(recordingsDir, `.recording-${timestamp}.video.mkv`);
+
+	const pauseState = { paused: false };
+	const audio = await startAudioTracks(recordingsDir, timestamp, options, pauseState);
+
 	const capture = spawn(getCaptureHelperPath(), [outputName, String(CAPTURE_FPS)], {
 		stdio: ["pipe", "pipe", "pipe"],
 	});
@@ -230,7 +251,7 @@ export async function startCosmicRecording(
 		format = await readCaptureFormat(capture);
 	} catch (error) {
 		capture.kill();
-		killAudio();
+		killAudioTracks(audio);
 		return { success: false, message: error instanceof Error ? error.message : String(error) };
 	}
 	// The helper prints FORMAT right after grabbing the first frame and its
@@ -278,13 +299,11 @@ export async function startCosmicRecording(
 	);
 
 	active = {
-		capture,
-		encoder,
+		video: { capture, encoder, videoPath, encoderExit: waitForExit(encoder) },
 		audio,
-		videoPath,
 		outputPath,
-		encoderExit: waitForExit(encoder),
-		videoStartedAtMs,
+		startedAtMs: videoStartedAtMs,
+		keepSpeakerTracks: Boolean(options?.keepSpeakerTracks),
 		pauseState,
 	};
 	console.log(
@@ -293,10 +312,41 @@ export async function startCosmicRecording(
 	return { success: true };
 }
 
+/** Records only audio (a meeting without the screen) into an .m4a. */
+export async function startCosmicAudioRecording(
+	options: NativeMacRecordingOptions | undefined,
+): Promise<{ success: boolean; message?: string }> {
+	if (active) return { success: false, message: "A recording is already active." };
+	if (!options?.capturesMicrophone && !options?.capturesSystemAudio) {
+		return { success: false, message: "Choose a microphone or system audio to record." };
+	}
+	const recordingsDir = await getRecordingsDir();
+	const timestamp = Date.now();
+	const pauseState = { paused: false };
+	const audio = await startAudioTracks(recordingsDir, timestamp, options, pauseState);
+	const starts = audio.flatMap((track) =>
+		track.startedAtMs === null ? [] : [track.startedAtMs],
+	);
+	if (starts.length === 0) {
+		killAudioTracks(audio);
+		return { success: false, message: "No audio device produced any sound data." };
+	}
+	active = {
+		video: null,
+		audio,
+		outputPath: path.join(recordingsDir, `recording-${timestamp}.m4a`),
+		startedAtMs: Math.min(...starts),
+		keepSpeakerTracks: Boolean(options.keepSpeakerTracks),
+		pauseState,
+	};
+	console.log(`[cosmic-capture] Recording audio only to ${active.outputPath}`);
+	return { success: true };
+}
+
 export function pauseCosmicRecording() {
 	if (!active) return { success: false, message: "No screen recording is active." };
 	if (!active.pauseState.paused) {
-		active.capture.stdin?.write("pause\n");
+		active.video?.capture.stdin?.write("pause\n");
 		active.pauseState.paused = true;
 	}
 	return { success: true };
@@ -305,7 +355,7 @@ export function pauseCosmicRecording() {
 export function resumeCosmicRecording() {
 	if (!active) return { success: false, message: "No screen recording is active." };
 	if (active.pauseState.paused) {
-		active.capture.stdin?.write("resume\n");
+		active.video?.capture.stdin?.write("resume\n");
 		active.pauseState.paused = false;
 	}
 	return { success: true };
@@ -327,7 +377,7 @@ async function hasAudioData(file: string) {
  */
 async function persistCosmicCursorTelemetry(recording: ActiveCosmicRecording) {
 	snapshotCursorTelemetryForPersistence();
-	const shiftMs = cursorCaptureStartTimeMs - recording.videoStartedAtMs;
+	const shiftMs = cursorCaptureStartTimeMs - recording.startedAtMs;
 	const appliedShiftMs = shiftMs > 0 && shiftMs < 5000 ? shiftMs : 0;
 	const samples = pendingCursorSamples.map((sample) => ({
 		...sample,
@@ -344,6 +394,40 @@ async function persistCosmicCursorTelemetry(recording: ActiveCosmicRecording) {
 	}
 }
 
+/** ffmpeg filter that lines a raw track up with the recording's reference start. */
+export function alignTrackFilter(trackStartedAtMs: number, referenceMs: number) {
+	const offsetMs = Math.round(trackStartedAtMs - referenceMs);
+	return offsetMs > 0
+		? `adelay=${offsetMs}:all=1`
+		: `atrim=start=${(-offsetMs / 1000).toFixed(3)},asetpts=PTS-STARTPTS`;
+}
+
+/** Path of the per-speaker meeting track kept next to a recording. */
+export function speakerTrackPath(outputPath: string, role: "mic" | "system") {
+	return outputPath.replace(/\.[^./\\]+$/, "") + `.meeting-${role}.opus`;
+}
+
+async function runFfmpeg(args: string[]) {
+	const child = spawn(getFfmpegBinaryPath(), args, { stdio: ["ignore", "ignore", "pipe"] });
+	let stderr = "";
+	child.stderr?.on("data", (chunk: Buffer) => {
+		stderr += chunk.toString();
+	});
+	const code = await waitForExit(child);
+	return { code, stderr: stderr.trim() };
+}
+
+const rawTrackInput = (file: string) => [
+	"-f",
+	"s16le",
+	"-ar",
+	String(AUDIO_RATE),
+	"-ac",
+	"2",
+	"-i",
+	file,
+];
+
 export async function stopCosmicRecording(): Promise<{
 	success: boolean;
 	path?: string;
@@ -353,15 +437,18 @@ export async function stopCosmicRecording(): Promise<{
 	if (!recording) return { success: false, error: "No screen recording is active." };
 	active = null;
 
-	recording.capture.stdin?.end("stop\n");
+	const { video } = recording;
+	video?.capture.stdin?.end("stop\n");
 	const audioExits = recording.audio.map(async (track) => {
 		track.process.kill("SIGINT");
 		await waitForExit(track.process);
 		await new Promise<void>((resolve) => track.file.end(resolve));
 	});
-	await waitForExit(recording.capture);
-	await persistCosmicCursorTelemetry(recording);
-	const [encoderCode] = await Promise.all([recording.encoderExit, ...audioExits]);
+	if (video) {
+		await waitForExit(video.capture);
+		await persistCosmicCursorTelemetry(recording);
+	}
+	const [encoderCode] = await Promise.all([video?.encoderExit ?? 0, ...audioExits]);
 	if (encoderCode !== 0) {
 		return { success: false, error: `The video encoder exited with code ${encoderCode}.` };
 	}
@@ -371,22 +458,22 @@ export async function stopCosmicRecording(): Promise<{
 		if (track.startedAtMs !== null && (await hasAudioData(track.path))) audioTracks.push(track);
 		else console.warn(`[cosmic-capture] No audio captured in ${track.path}`);
 	}
-
-	const args = ["-hide_banner", "-loglevel", "error", "-y", "-i", recording.videoPath];
-	for (const track of audioTracks) {
-		args.push("-f", "s16le", "-ar", String(AUDIO_RATE), "-ac", "2", "-i", track.path);
+	if (!video && audioTracks.length === 0) {
+		await removeCosmicTempFiles(recording);
+		return { success: false, error: "No audio was captured." };
 	}
-	args.push("-map", "0:v");
+
+	const args = ["-hide_banner", "-loglevel", "error", "-y"];
+	if (video) args.push("-i", video.videoPath);
+	const firstAudioInput = video ? 1 : 0;
+	for (const track of audioTracks) args.push(...rawTrackInput(track.path));
+	if (video) args.push("-map", "0:v");
 	if (audioTracks.length > 0) {
-		// Line each track up with the first video frame.
+		// Line each track up with the first video frame (or the earliest audio sample).
 		const chains = audioTracks.map((track, index) => {
-			const offsetMs = Math.round((track.startedAtMs ?? 0) - recording.videoStartedAtMs);
-			console.log(`[cosmic-capture] ${path.basename(track.path)} audio offset ${offsetMs}ms`);
-			const align =
-				offsetMs > 0
-					? `adelay=${offsetMs}:all=1`
-					: `atrim=start=${(-offsetMs / 1000).toFixed(3)},asetpts=PTS-STARTPTS`;
-			return `[${index + 1}:a]${align}[a${index}]`;
+			const align = alignTrackFilter(track.startedAtMs ?? 0, recording.startedAtMs);
+			console.log(`[cosmic-capture] ${path.basename(track.path)} align ${align}`);
+			return `[${index + firstAudioInput}:a]${align}[a${index}]`;
 		});
 		const mixed =
 			audioTracks.length === 1
@@ -394,27 +481,53 @@ export async function stopCosmicRecording(): Promise<{
 				: `${chains.join(";")};${audioTracks.map((_, index) => `[a${index}]`).join("")}amix=inputs=${audioTracks.length}:duration=longest:normalize=0[a]`;
 		args.push("-filter_complex", mixed, "-map", "[a]");
 	}
-	args.push("-c:v", "copy");
+	if (video) args.push("-c:v", "copy");
 	if (audioTracks.length > 0) args.push("-c:a", "aac", "-b:a", "192k");
-	args.push("-movflags", "+faststart", "-shortest", recording.outputPath);
+	args.push("-movflags", "+faststart");
+	if (video) args.push("-shortest");
+	args.push(recording.outputPath);
 
-	const mux = spawn(getFfmpegBinaryPath(), args, { stdio: ["ignore", "ignore", "pipe"] });
-	let muxError = "";
-	mux.stderr?.on("data", (chunk: Buffer) => {
-		muxError += chunk.toString();
-	});
-	const muxCode = await waitForExit(mux);
-	if (muxCode !== 0) {
-		return { success: false, error: muxError.trim() || `Muxing failed with code ${muxCode}.` };
+	// Speaker tracks are transcription input only: mono, aligned like the mix,
+	// never played back (listeners always get the mixed track above).
+	const speakerTracks = recording.keepSpeakerTracks
+		? audioTracks.map((track) =>
+				runFfmpeg([
+					"-hide_banner",
+					"-loglevel",
+					"error",
+					"-y",
+					...rawTrackInput(track.path),
+					"-af",
+					alignTrackFilter(track.startedAtMs ?? 0, recording.startedAtMs),
+					"-ac",
+					"1",
+					"-c:a",
+					"libopus",
+					"-b:a",
+					"48k",
+					speakerTrackPath(recording.outputPath, track.role),
+				]),
+			)
+		: [];
+
+	const [mux, ...speakers] = await Promise.all([runFfmpeg(args), ...speakerTracks]);
+	if (mux.code !== 0) {
+		return { success: false, error: mux.stderr || `Muxing failed with code ${mux.code}.` };
+	}
+	for (const result of speakers) {
+		if (result.code !== 0)
+			console.warn("[cosmic-capture] Speaker track failed:", result.stderr);
 	}
 
-	await Promise.all(
-		[recording.videoPath, ...recording.audio.map((entry) => entry.path)].map((file) =>
-			fs.rm(file, { force: true }),
-		),
-	);
+	await removeCosmicTempFiles(recording);
 	console.log(`[cosmic-capture] Saved ${recording.outputPath}`);
 	return { success: true, path: recording.outputPath };
+}
+
+async function removeCosmicTempFiles(recording: ActiveCosmicRecording) {
+	const files = recording.audio.map((entry) => entry.path);
+	if (recording.video) files.push(recording.video.videoPath);
+	await Promise.all(files.map((file) => fs.rm(file, { force: true })));
 }
 
 /** Stops the processes without producing a file. */
@@ -422,18 +535,13 @@ export async function discardCosmicRecording() {
 	const recording = active;
 	if (!recording) return;
 	active = null;
-	recording.capture.kill();
-	recording.encoder.kill();
-	for (const track of recording.audio) {
-		track.process.kill("SIGKILL");
-		track.file.destroy();
+	recording.video?.capture.kill();
+	recording.video?.encoder.kill();
+	killAudioTracks(recording.audio);
+	if (recording.video) {
+		await Promise.all([waitForExit(recording.video.capture), recording.video.encoderExit]);
 	}
-	await Promise.all([waitForExit(recording.capture), recording.encoderExit]);
-	await Promise.all(
-		[recording.videoPath, ...recording.audio.map((entry) => entry.path)].map((file) =>
-			fs.rm(file, { force: true }),
-		),
-	);
+	await removeCosmicTempFiles(recording);
 }
 
 /** Waits for the next mouse click anywhere and resolves with the output under it. */

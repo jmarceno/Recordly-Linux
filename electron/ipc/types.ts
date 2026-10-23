@@ -43,6 +43,8 @@ export type NativeMacRecordingOptions = {
 	capturesMicrophone?: boolean;
 	microphoneDeviceId?: string;
 	microphoneLabel?: string;
+	/** Meetings keep the mic and system audio as separate files for speaker labels. */
+	keepSpeakerTracks?: boolean;
 };
 
 export type WindowBounds = {

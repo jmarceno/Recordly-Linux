@@ -3,6 +3,7 @@ import { registerCapturePickerHandlers } from "./register/capturePicker";
 import { registerAssetHandlers } from "./register/assets";
 import { registerCaptionHandlers } from "./register/captions";
 import { registerExportHandlers } from "./register/export";
+import { registerMeetingHandlers } from "./register/meeting";
 import { registerPermissionHandlers } from "./register/permissions";
 import { registerProjectHandlers } from "./register/project";
 import { registerRecordingHandlers } from "./register/recording";
@@ -69,6 +70,7 @@ export function registerIpcHandlers(
 	registerAssetHandlers();
 	registerExportHandlers();
 	registerCaptionHandlers();
+	registerMeetingHandlers();
 	registerProjectHandlers();
 	registerSettingsHandlers();
 }

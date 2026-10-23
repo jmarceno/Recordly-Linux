@@ -46,11 +46,7 @@ type NativeStaticLayoutChunkMetric = {
 	index: number;
 	startSec: number;
 	durationSec: number;
-	backend:
-		| "ffmpeg-overlay"
-		| "ffmpeg-pad"
-		| "ffmpeg-precomposite"
-		| "windows-d3d11-compositor";
+	backend: "ffmpeg-overlay" | "ffmpeg-pad" | "ffmpeg-precomposite" | "windows-d3d11-compositor";
 	elapsedMs: number;
 	outputBytes: number;
 	fallbackReason?: string;
@@ -803,6 +799,41 @@ contextBridge.exposeInMainWorld("electronAPI", {
 		language?: string;
 	}) => {
 		return ipcRenderer.invoke("generate-auto-captions", options);
+	},
+	meetingGetSettings: () => ipcRenderer.invoke("meeting-get-settings"),
+	meetingSetSettings: (patch: Record<string, unknown>) =>
+		ipcRenderer.invoke("meeting-set-settings", patch),
+	meetingStartAudioRecording: (options?: {
+		capturesSystemAudio?: boolean;
+		capturesMicrophone?: boolean;
+		microphoneLabel?: string;
+	}) => ipcRenderer.invoke("meeting-start-audio-recording", options),
+	meetingRunJob: (request: { mediaPath: string; mode: "full" | "transcribe" | "summarize" }) =>
+		ipcRenderer.invoke("meeting-run-job", request),
+	meetingCancelJob: (jobId: string) => ipcRenderer.invoke("meeting-cancel-job", jobId),
+	meetingListJobs: () => ipcRenderer.invoke("meeting-list-jobs"),
+	meetingGetFiles: (mediaPath: string) => ipcRenderer.invoke("meeting-get-files", mediaPath),
+	meetingSaveFile: (request: {
+		mediaPath: string;
+		kind: "transcript" | "notes";
+		content: string;
+	}) => ipcRenderer.invoke("meeting-save-file", request),
+	meetingListAssets: () => ipcRenderer.invoke("meeting-list-assets"),
+	meetingDownloadAsset: (assetId: string) =>
+		ipcRenderer.invoke("meeting-download-asset", assetId),
+	meetingRemoveAsset: (assetId: string) => ipcRenderer.invoke("meeting-remove-asset", assetId),
+	onMeetingJobUpdate: (callback: (job: unknown) => void) => {
+		const listener = (_event: Electron.IpcRendererEvent, job: unknown) => callback(job);
+		ipcRenderer.on("meeting-job-update", listener);
+		return () => ipcRenderer.removeListener("meeting-job-update", listener);
+	},
+	onMeetingAssetProgress: (callback: (payload: { id: string; progress: number }) => void) => {
+		const listener = (
+			_event: Electron.IpcRendererEvent,
+			payload: { id: string; progress: number },
+		) => callback(payload);
+		ipcRenderer.on("meeting-asset-progress", listener);
+		return () => ipcRenderer.removeListener("meeting-asset-progress", listener);
 	},
 	setCurrentVideoPath: (
 		path: string,

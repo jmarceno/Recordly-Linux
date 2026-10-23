@@ -22,6 +22,55 @@ declare namespace NodeJS {
 }
 
 // Used in Renderer process, expose in `preload.ts`
+type MeetingJobMode = "full" | "transcribe" | "summarize";
+
+interface MeetingJob {
+	id: string;
+	mediaPath: string;
+	mode: MeetingJobMode;
+	status: "queued" | "running" | "done" | "failed" | "cancelled";
+	stage: "transcribe" | "summarize" | "title" | null;
+	message: string;
+	progress: number | null;
+	error: string | null;
+	createdAt: string;
+	finishedAt: string | null;
+}
+
+interface MeetingMeta {
+	language?: string | null;
+	durationMs?: number | null;
+	title?: string;
+	transcribedAt?: string;
+	summarizedAt?: string;
+	transcriptionSource?: string;
+	summarizationSource?: string;
+	lastJob?: {
+		mode: MeetingJobMode;
+		status: "running" | "done" | "failed" | "cancelled";
+		error?: string;
+		at: string;
+	};
+}
+
+interface MeetingSettingsView {
+	transcriptionService: "local" | "api";
+	whisperModel: "large-v3-turbo-q5_0" | "small";
+	language: string;
+	summarizationService: "local" | "api";
+	localModel: "qwen3.5-2b" | "qwen3.5-4b";
+	apiBaseUrl: string;
+	apiTranscriptionModel: string;
+	apiChatModel: string;
+	apiChatCapabilities: Array<"text" | "images" | "video">;
+	apiTimeoutMinutes: number;
+	summaryPrompt: string;
+	titlePrompt: string;
+	autoProcess: boolean;
+	autoTitle: boolean;
+	hasApiKey: boolean;
+}
+
 interface NativeCaptureDiagnostics {
 	backend: "windows-wgc" | "mac-screencapturekit" | "browser-store" | "ffmpeg";
 	phase: "availability" | "start" | "stop" | "mux";
@@ -98,11 +147,7 @@ interface RendererNativeStaticLayoutChunkMetric {
 	index: number;
 	startSec: number;
 	durationSec: number;
-	backend:
-		| "ffmpeg-overlay"
-		| "ffmpeg-pad"
-		| "ffmpeg-precomposite"
-		| "windows-d3d11-compositor";
+	backend: "ffmpeg-overlay" | "ffmpeg-pad" | "ffmpeg-precomposite" | "windows-d3d11-compositor";
 	elapsedMs: number;
 	outputBytes: number;
 	fallbackReason?: string;
@@ -719,6 +764,44 @@ interface Window {
 			message?: string;
 			error?: string;
 		}>;
+		meetingGetSettings: () => Promise<MeetingSettingsView>;
+		meetingSetSettings: (
+			patch: Partial<MeetingSettingsView> & { apiKey?: string | null },
+		) => Promise<{ success: boolean; settings?: MeetingSettingsView; error?: string }>;
+		meetingStartAudioRecording: (options?: {
+			capturesSystemAudio?: boolean;
+			capturesMicrophone?: boolean;
+			microphoneLabel?: string;
+		}) => Promise<{ success: boolean; message?: string }>;
+		meetingRunJob: (request: {
+			mediaPath: string;
+			mode: MeetingJobMode;
+		}) => Promise<{ success: boolean; job?: MeetingJob; error?: string }>;
+		meetingCancelJob: (jobId: string) => Promise<{ success: boolean }>;
+		meetingListJobs: () => Promise<MeetingJob[]>;
+		meetingGetFiles: (mediaPath: string) => Promise<{
+			success: boolean;
+			paths?: { transcript: string; notes: string; meta: string };
+			transcript?: string | null;
+			notes?: string | null;
+			meta?: MeetingMeta;
+			interrupted?: boolean;
+			error?: string;
+		}>;
+		meetingSaveFile: (request: {
+			mediaPath: string;
+			kind: "transcript" | "notes";
+			content: string;
+		}) => Promise<{ success: boolean; error?: string }>;
+		meetingListAssets: () => Promise<
+			Array<{ id: string; label: string; sizeBytes: number; installed: boolean }>
+		>;
+		meetingDownloadAsset: (assetId: string) => Promise<{ success: boolean; error?: string }>;
+		meetingRemoveAsset: (assetId: string) => Promise<{ success: boolean; error?: string }>;
+		onMeetingJobUpdate: (callback: (job: MeetingJob) => void) => () => void;
+		onMeetingAssetProgress: (
+			callback: (payload: { id: string; progress: number; removed?: boolean }) => void,
+		) => () => void;
 		setCurrentVideoPath: (
 			path: string,
 			options?: {
