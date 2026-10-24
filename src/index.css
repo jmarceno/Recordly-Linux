@@ -136,6 +136,43 @@
 	}
 }
 
+/* Dark theme: GravaAi's palette (gravaai/linux/qml/Theme.qml, the base the
+   rust-qml-desktop-template documents). HeroUI derives hover, soft and
+   border variants from these. The light theme keeps HeroUI's defaults. */
+.dark {
+ --background: #121418;
+ --foreground: #ffffff;
+ --surface: #1b1e25;
+ --surface-secondary: #232833;
+ --surface-tertiary: #2a303b;
+ --overlay: #1b1e25;
+ --muted: #8b929a;
+ --default: #232833;
+ --default-foreground: #ffffff;
+ --segment: #343b48;
+ --segment-foreground: #ffffff;
+ --field-background: #12151b;
+ --field-foreground: #ffffff;
+ --field-placeholder: #6b7280;
+ --border: #2a303b;
+ --separator: #2a303b;
+ --accent: #2fb3a3;
+ --accent-foreground: #ffffff;
+ --accent-hover: #3fd4c1;
+ --accent-soft: color-mix(in oklab, #2fb3a3 13%, transparent);
+ --accent-soft-hover: color-mix(in oklab, #2fb3a3 20%, transparent);
+ --accent-soft-foreground: #3fd4c1;
+ --brand-accent-rgb: 47, 179, 163;
+ --success: #3ecf8e;
+ --success-soft: color-mix(in oklab, #3ecf8e 13%, transparent);
+ --warning: #e8b339;
+ --warning-soft: color-mix(in oklab, #e8b339 15%, transparent);
+ --danger: #e5656e;
+ --danger-hover: #f07880;
+ --danger-soft: color-mix(in oklab, #e5656e 15%, transparent);
+ --scrollbar-thumb: #2a2f38;
+}
+
 /* HeroUI owns control focus rings; native controls use the same accent token.
    Do not outline dialogs or other programmatically focused containers. */
 :root,
@@ -209,6 +246,6 @@
 }
 
 .dark .dashboard-shell { background-color: var(--background); }
-.dark .dashboard-shell > .card { background-color: color-mix(in srgb, var(--background) 92%, var(--foreground) 8%); }
+.dark .dashboard-shell > .card { background-color: var(--surface); }
 
 .dashboard-settings .custom-scrollbar { padding-inline: 0; scrollbar-gutter: auto !important; }
